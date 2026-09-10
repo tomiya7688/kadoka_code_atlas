@@ -1,78 +1,99 @@
-"""Python AST adapter for deterministic, conservative comment suggestions."""
+"""Python AST adapter."""
 
 from __future__ import annotations
 
 import ast
-import re
 
-from Src.models import CommentCandidate, CommentTarget, ParsedSource
-
-
-_WORDS = re.compile(r"(?<=[a-z0-9])(?=[A-Z])|_+")
+from Src.analyzers.ir import CodeEntity, EntityKind, ModuleIR
 
 
-def _words(name: str) -> str:
-    return " ".join(part.lower() for part in _WORDS.split(name) if part).strip()
-
-
-def _has_leading_comment(lines: list[str], line: int) -> bool:
-    """Return whether a contiguous comment directly precedes a definition."""
-    index = line - 2
-    while index >= 0 and not lines[index].strip():
-        index -= 1
-    return index >= 0 and lines[index].lstrip().startswith("#")
-
-
-def _has_body_comment(lines: list[str], node: ast.AST) -> bool:
-    """Return whether the first meaningful line in a callable body is a comment."""
-    index = node.lineno
-    while index < len(lines) and not lines[index].strip():
-        index += 1
-    return index < len(lines) and lines[index].lstrip().startswith("#")
-
-
-def _function_comment(node: ast.FunctionDef | ast.AsyncFunctionDef) -> str | None:
-    if node.name.startswith("__") and node.name.endswith("__"):
-        return None
-    action = _words(node.name)
-    if not action:
-        return None
-    if node.name.startswith(("is_", "has_", "can_", "should_")):
-        return f"# Checks whether {action.split(' ', 1)[-1]}."
-    if node.name.startswith(("get_", "find_", "load_", "read_")):
-        return f"# Retrieves {action.split(' ', 1)[-1]}."
-    return f"# Performs the {action} operation."
-
-
-class PythonAdapter:
-    """Extract safe class and callable comment candidates from Python source."""
+class PythonLanguageAdapter:
+    """Convert Python source into Kadoka Code Atlas' common IR."""
 
     language = "python"
 
-    def parse(self, source: str) -> ParsedSource:
+    def parse(self, source: str) -> ModuleIR:
         tree = ast.parse(source)
-        lines = source.splitlines()
-        candidates: list[CommentCandidate] = []
+        entities: list[CodeEntity] = []
+        self._collect(tree.body, source, entities, parent=None)
+        return ModuleIR(language=self.language, entities=entities)
 
-        for parent in ast.walk(tree):
-            parent_is_class = isinstance(parent, ast.ClassDef)
-            for node in ast.iter_child_nodes(parent):
-                if isinstance(node, ast.ClassDef):
-                    if ast.get_docstring(node) or _has_leading_comment(lines, node.lineno) or _has_body_comment(lines, node):
-                        continue
-                    candidates.append(CommentCandidate(
-                        CommentTarget.CLASS, node.name, node.lineno,
-                        " " * node.col_offset,
-                        f"# Groups behavior related to {_words(node.name)}.",
-                    ))
-                elif isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
-                    if ast.get_docstring(node) or _has_leading_comment(lines, node.lineno) or _has_body_comment(lines, node):
-                        continue
-                    text = _function_comment(node)
-                    if text:
-                        candidates.append(CommentCandidate(
-                            CommentTarget.METHOD if parent_is_class else CommentTarget.FUNCTION,
-                            node.name, node.lineno, " " * node.col_offset, text,
-                        ))
+    def _collect(
+        self,
+        nodes: list[ast.stmt],
+        source: str,
+        entities: list[CodeEntity],
+        parent: str | None,
+    ) -> None:
+        for node in nodes:
+            if isinstance(node, ast.ClassDef):
+                entity = self._class_entity(node, source, parent)
+                entities.append(entity)
+                self._collect(node.body, source, entities, parent=entity.qualified_name)
+            elif isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                kind = EntityKind.METHOD if parent else EntityKind.FUNCTION
+                entity = self._function_entity(node, source, parent, kind)
+                entities.append(entity)
+                self._collect(node.body, source, entities, parent=entity.qualified_name)
 
-        return ParsedSource(self.language, tuple(sorted(candidates, key=lambda item: item.line)))
+    def _class_entity(
+        self, node: ast.ClassDef, source: str, parent: str | None
+    ) -> CodeEntity:
+        return CodeEntity(
+            kind=EntityKind.CLASS,
+            name=node.name,
+            line=node.lineno,
+            end_line=node.end_lineno or node.lineno,
+            indent=node.col_offset,
+            parent=parent,
+            docstring=ast.get_docstring(node, clean=False),
+            decorators=tuple(self._expr_text(item, source) for item in node.decorator_list),
+        )
+
+    def _function_entity(
+        self,
+        node: ast.FunctionDef | ast.AsyncFunctionDef,
+        source: str,
+        parent: str | None,
+        kind: EntityKind,
+    ) -> CodeEntity:
+        parameters = [argument.arg for argument in node.args.posonlyargs]
+        parameters.extend(argument.arg for argument in node.args.args)
+        if node.args.vararg:
+            parameters.append(f"*{node.args.vararg.arg}")
+        parameters.extend(argument.arg for argument in node.args.kwonlyargs)
+        if node.args.kwarg:
+            parameters.append(f"**{node.args.kwarg.arg}")
+
+        calls = tuple(
+            dict.fromkeys(
+                self._call_name(call.func)
+                for call in ast.walk(node)
+                if isinstance(call, ast.Call) and self._call_name(call.func)
+            )
+        )
+        return CodeEntity(
+            kind=kind,
+            name=node.name,
+            line=node.lineno,
+            end_line=node.end_lineno or node.lineno,
+            indent=node.col_offset,
+            parent=parent,
+            docstring=ast.get_docstring(node, clean=False),
+            parameters=tuple(parameters),
+            decorators=tuple(self._expr_text(item, source) for item in node.decorator_list),
+            calls=calls,
+        )
+
+    @staticmethod
+    def _expr_text(node: ast.AST, source: str) -> str:
+        return ast.get_source_segment(source, node) or ""
+
+    @classmethod
+    def _call_name(cls, node: ast.AST) -> str:
+        if isinstance(node, ast.Name):
+            return node.id
+        if isinstance(node, ast.Attribute):
+            prefix = cls._call_name(node.value)
+            return f"{prefix}.{node.attr}" if prefix else node.attr
+        return ""

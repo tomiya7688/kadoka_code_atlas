@@ -1,7 +1,5 @@
-"""Language adapters for extracting comment candidates."""
+"""Language-specific parsing adapters."""
 
-from .base import LanguageAdapter
-from .csharp import CSharpAdapter
-from .python import PythonAdapter
+from .python import PythonLanguageAdapter
 
-__all__ = ["CSharpAdapter", "LanguageAdapter", "PythonAdapter"]
+__all__ = ["PythonLanguageAdapter"]
