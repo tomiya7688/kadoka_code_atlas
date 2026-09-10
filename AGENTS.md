@@ -57,6 +57,9 @@ Candidate fifth language:
 ## Class-diagram grouping rule
 Default to caller-centered diagrams. If one class is referenced by many callers, generate a dedicated callee-centered diagram for that heavily referenced class.
 
+## Current issue context
+If `.codex/next_issue.md` exists, treat the issue described there as the current highest-priority task. Read that file immediately after this one. Do not fetch or load unrelated issues unless the selected issue requires them.
+
 ## Context discipline
 This file intentionally stays short. Read only the relevant file under `docs/specs/` for the feature being modified. Do not load every feature specification unless the task actually spans them.
 
