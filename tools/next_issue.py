@@ -36,6 +36,33 @@ PRIORITY_LABELS = {
     "low priority": 3,
 }
 
+# Issue labels can point Codex at exactly one relevant specification.
+# Multiple spec:* labels are supported when an issue intentionally spans features.
+SPEC_LABELS = {
+    "spec:comment-generator": "docs/specs/comment_generator.md",
+    "spec:comments": "docs/specs/comment_generator.md",
+    "spec:diagram": "docs/specs/diagrams.md",
+    "spec:diagrams": "docs/specs/diagrams.md",
+    "spec:class-diagram": "docs/specs/diagrams.md",
+    "spec:object-diagram": "docs/specs/diagrams.md",
+    "spec:sequence-diagram": "docs/specs/diagrams.md",
+    "spec:package-diagram": "docs/specs/diagrams.md",
+    "spec:use-case-diagram": "docs/specs/diagrams.md",
+    "spec:communication-diagram": "docs/specs/diagrams.md",
+    "spec:activity-diagram": "docs/specs/diagrams.md",
+    "spec:component-diagram": "docs/specs/diagrams.md",
+    "spec:deployment-diagram": "docs/specs/diagrams.md",
+    "spec:state-machine-diagram": "docs/specs/diagrams.md",
+    "spec:timing-diagram": "docs/specs/diagrams.md",
+    "spec:call-graph": "docs/specs/diagrams.md",
+    "spec:class-responsibility-table": "docs/specs/class_responsibility_table.md",
+    "spec:responsibility-table": "docs/specs/class_responsibility_table.md",
+    "spec:ci-analyzer": "docs/specs/ci_analyzer.md",
+    "spec:ci": "docs/specs/ci_analyzer.md",
+    "spec:design-evaluation": "docs/specs/design_evaluation.md",
+    "spec:evaluation": "docs/specs/design_evaluation.md",
+}
+
 
 def run_gh() -> list[dict]:
     command = [
@@ -71,6 +98,18 @@ def priority(issue: dict) -> tuple[int, int]:
     # Within the same priority, older issue number wins. This keeps ordering stable and
     # avoids silently changing priorities based on wording or LLM interpretation.
     return rank, int(issue["number"])
+
+
+def related_specs(issue: dict) -> list[str]:
+    paths: list[str] = []
+    seen: set[str] = set()
+    for label in issue.get("labels", []):
+        name = label.get("name", "").strip().lower()
+        path = SPEC_LABELS.get(name)
+        if path and path not in seen:
+            seen.add(path)
+            paths.append(path)
+    return paths
 
 
 def compact_body(body: str, max_chars: int = 900) -> str:
@@ -115,34 +154,50 @@ def main() -> int:
     rank, _ = priority(issue)
     priority_text = f"P{rank}" if rank < 4 else "unlabeled"
     summary = compact_body(issue.get("body") or "")
+    specs = related_specs(issue)
+
+    lines = [
+        "# Next Issue",
+        "",
+        f"Issue: #{issue['number']} — {issue['title']}",
+        f"Priority: {priority_text}",
+        f"Labels: {', '.join(label_names) if label_names else '(none)'}",
+        f"URL: {issue['url']}",
+        "",
+        "## Compact summary",
+        summary,
+        "",
+        "## Required context",
+        "- AGENTS.md",
+    ]
+
+    if specs:
+        lines.extend(f"- {path}" for path in specs)
+    else:
+        lines.append("- No spec selected by label; inspect only the minimum relevant files.")
+
+    lines.extend(
+        [
+            "",
+            "## Codex instruction",
+            "Implement or resolve this issue as the current highest-priority task.",
+            "Read only the files listed under Required context before inspecting implementation files needed for the change.",
+            "Do not load unrelated docs/specs files.",
+            "Inspect the existing implementation before changing it.",
+            "Keep changes scoped to this issue and run the relevant checks after editing.",
+            "",
+        ]
+    )
 
     OUTPUT.parent.mkdir(parents=True, exist_ok=True)
-    OUTPUT.write_text(
-        "\n".join(
-            [
-                "# Next Issue",
-                "",
-                f"Issue: #{issue['number']} — {issue['title']}",
-                f"Priority: {priority_text}",
-                f"Labels: {', '.join(label_names) if label_names else '(none)'}",
-                f"URL: {issue['url']}",
-                "",
-                "## Compact summary",
-                summary,
-                "",
-                "## Codex instruction",
-                "Implement or resolve this issue as the current highest-priority task.",
-                "Read AGENTS.md first, then only the docs/specs files relevant to this issue.",
-                "Do not load unrelated specifications. Inspect the existing implementation before changing it.",
-                "Keep changes scoped to this issue and run the relevant checks after editing.",
-                "",
-            ]
-        ),
-        encoding="utf-8",
-    )
+    OUTPUT.write_text("\n".join(lines), encoding="utf-8")
 
     print(f"[{priority_text}] #{issue['number']} {issue['title']}")
     print(summary)
+    if specs:
+        print("Specs: " + ", ".join(specs))
+    else:
+        print("Specs: none selected (add a spec:* label to the issue)")
     print(f"\nCodex context written to: {OUTPUT}")
     print(issue["url"])
     return 0
