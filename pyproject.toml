@@ -1,0 +1,21 @@
+[build-system]
+requires = ["setuptools>=69", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "kadoka-code-atlas"
+version = "0.1.0"
+description = "Source code analysis, visualization, and design evaluation toolkit."
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+authors = [
+    { name = "tomiya7688" }
+]
+dependencies = []
+
+[project.scripts]
+kadoka-code-atlas = "app:main"
+
+[tool.setuptools]
+py-modules = ["app"]
