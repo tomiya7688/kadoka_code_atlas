@@ -1,1 +1,1 @@
-"""Kadoka Code Atlas analysis and generation packages."""
+"""Kadoka Code Atlas core package."""

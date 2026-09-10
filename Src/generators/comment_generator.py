@@ -4,7 +4,8 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 
-from Src.languages import CSharpAdapter, GDScriptAdapter, LanguageAdapter, PythonAdapter
+from Src.languages import CSharpAdapter, GDScriptAdapter, LanguageAdapter
+from Src.languages.python_comments_adapter import PythonAdapter
 from Src.models import CommentCandidate
 
 
