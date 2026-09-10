@@ -2,6 +2,7 @@
 
 from .base import LanguageAdapter
 from .csharp import CSharpAdapter
+from .gdscript import GDScriptAdapter
 from .python import PythonAdapter
 
-__all__ = ["CSharpAdapter", "LanguageAdapter", "PythonAdapter"]
+__all__ = ["CSharpAdapter", "GDScriptAdapter", "LanguageAdapter", "PythonAdapter"]

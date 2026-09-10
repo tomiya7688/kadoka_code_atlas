@@ -15,6 +15,7 @@ class CommentTarget(str, Enum):
     METHOD = "method"
     PROPERTY = "property"
     FIELD = "field"
+    SIGNAL = "signal"
     BRANCH = "branch"
 
 

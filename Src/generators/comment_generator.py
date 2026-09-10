@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 
-from Src.languages import CSharpAdapter, LanguageAdapter, PythonAdapter
+from Src.languages import CSharpAdapter, GDScriptAdapter, LanguageAdapter, PythonAdapter
 from Src.models import CommentCandidate
 
 
@@ -17,10 +17,9 @@ class CommentGenerator:
 
     def __init__(self, adapters: Mapping[str, LanguageAdapter] | None = None) -> None:
         self._adapters = dict(adapters or {
-            "python": PythonAdapter(),
-            "py": PythonAdapter(),
-            "csharp": CSharpAdapter(),
-            "cs": CSharpAdapter(),
+            "python": PythonAdapter(), "py": PythonAdapter(),
+            "csharp": CSharpAdapter(), "cs": CSharpAdapter(),
+            "gdscript": GDScriptAdapter(), "gd": GDScriptAdapter(),
         })
 
     def candidates(self, source: str, language: str) -> tuple[CommentCandidate, ...]:
@@ -43,6 +42,4 @@ class CommentGenerator:
             return self._adapters[language.lower().lstrip(".")]
         except KeyError as error:
             supported = ", ".join(sorted(set(self._adapters)))
-            raise UnsupportedLanguageError(
-                f"No comment adapter for '{language}'. Supported languages: {supported}."
-            ) from error
+            raise UnsupportedLanguageError(f"No comment adapter for '{language}'. Supported languages: {supported}.") from error
