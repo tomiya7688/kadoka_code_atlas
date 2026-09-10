@@ -9,6 +9,18 @@ These files are intentionally split so Codex can load only the context required 
 - CI integration and checks → `ci_analyzer.md`
 - Design-quality evaluation → `design_evaluation.md`
 
+## Issue label routing
+`tools/next_issue.py` maps `spec:*` labels on the selected GitHub Issue to the minimum relevant spec files and writes those paths into `.codex/next_issue.md`.
+
+Recommended labels:
+- `spec:comment-generator` → `comment_generator.md`
+- `spec:class-diagram`, `spec:sequence-diagram`, `spec:call-graph`, and other diagram labels → `diagrams.md`
+- `spec:class-responsibility-table` → `class_responsibility_table.md`
+- `spec:ci-analyzer` → `ci_analyzer.md`
+- `spec:design-evaluation` → `design_evaluation.md`
+
+An Issue may carry multiple `spec:*` labels when it genuinely spans multiple feature areas. If no recognized `spec:*` label is present, Codex is instructed to inspect only the minimum implementation files needed and not to load all specifications.
+
 ## Context rule
 Start with the repository-root `AGENTS.md`. Then read only the relevant specification above. Load multiple specs only when a task genuinely crosses those boundaries.
 
