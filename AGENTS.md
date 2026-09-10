@@ -60,6 +60,9 @@ Default to caller-centered diagrams. If one class is referenced by many callers,
 ## Current issue context
 If `.codex/next_issue.md` exists, treat the issue described there as the current highest-priority task. Read that file immediately after this one. Do not fetch or load unrelated issues unless the selected issue requires them.
 
+## Low-context pull request workflow
+Use `pull_request.bat` after completing an issue. It runs `pytest`, stops on failure, commits local changes, pushes the work branch, and creates a PR using only changed-file names and diff statistics for its summary. Do not load the full diff merely to prepare a PR unless a failure or ambiguity requires inspection.
+
 ## Context discipline
 This file intentionally stays short. Read only the relevant file under `docs/specs/` for the feature being modified. Do not load every feature specification unless the task actually spans them.
 
