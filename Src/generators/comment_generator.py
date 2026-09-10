@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 
-from Src.languages import LanguageAdapter, PythonAdapter
+from Src.languages import CSharpAdapter, LanguageAdapter, PythonAdapter
 from Src.models import CommentCandidate
 
 
@@ -16,7 +16,12 @@ class CommentGenerator:
     """Insert deterministic comment candidates while preserving source statements."""
 
     def __init__(self, adapters: Mapping[str, LanguageAdapter] | None = None) -> None:
-        self._adapters = dict(adapters or {"python": PythonAdapter(), "py": PythonAdapter()})
+        self._adapters = dict(adapters or {
+            "python": PythonAdapter(),
+            "py": PythonAdapter(),
+            "csharp": CSharpAdapter(),
+            "cs": CSharpAdapter(),
+        })
 
     def candidates(self, source: str, language: str) -> tuple[CommentCandidate, ...]:
         """Return suggestions only; this method never mutates source text."""

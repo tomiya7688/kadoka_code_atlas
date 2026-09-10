@@ -13,6 +13,8 @@ class CommentTarget(str, Enum):
     CLASS = "class"
     FUNCTION = "function"
     METHOD = "method"
+    PROPERTY = "property"
+    FIELD = "field"
     BRANCH = "branch"
 
 
