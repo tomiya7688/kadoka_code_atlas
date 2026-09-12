@@ -50,6 +50,27 @@ def _statement(builder: _Builder, node: ast.stmt) -> tuple[str, list[str]]:
         for exit_node in exits:
             builder.link(exit_node, join)
         return decision, [join]
+    if isinstance(node, ast.Try):
+        try_node = builder.node("try", "decision")
+        body_entry, body_exits = _sequence(builder, node.body)
+        builder.link(try_node, body_entry, "try")
+        exits = list(body_exits)
+        for handler in node.handlers:
+            label = "except"
+            if handler.type is not None:
+                label += f" {_expr(handler.type)}"
+            handler_entry, handler_exits = _sequence(builder, handler.body)
+            builder.link(try_node, handler_entry, label)
+            exits.extend(handler_exits)
+        if node.finalbody:
+            final_entry, final_exits = _sequence(builder, node.finalbody)
+            for exit_node in exits:
+                builder.link(exit_node, final_entry)
+            exits = final_exits
+        join = builder.node("end try", "merge")
+        for exit_node in exits:
+            builder.link(exit_node, join)
+        return try_node, [join]
     if isinstance(node, (ast.For, ast.While)):
         condition = _expr(node.iter if isinstance(node, ast.For) else node.test)
         decision = builder.node(f"loop {condition}", "decision")
@@ -64,8 +85,14 @@ def _statement(builder: _Builder, node: ast.stmt) -> tuple[str, list[str]]:
         return builder.node("return" if node.value is None else f"return {_expr(node.value)}", "return"), []
     if isinstance(node, (ast.Break, ast.Continue)):
         return builder.node(type(node).__name__.lower(), "control"), []
-    if isinstance(node, ast.Expr) and isinstance(node.value, ast.Call):
-        return builder.node(f"call {_expr(node.value.func)}"), []
+    if isinstance(node, ast.Expr):
+        value = node.value
+        if isinstance(value, ast.Await):
+            awaited = value.value
+            label = f"await {_expr(awaited.func)}" if isinstance(awaited, ast.Call) else "await"
+            return builder.node(label, "async"), []
+        if isinstance(value, ast.Call):
+            return builder.node(f"call {_expr(value.func)}"), []
     return builder.node(type(node).__name__.lower()), []
 
 

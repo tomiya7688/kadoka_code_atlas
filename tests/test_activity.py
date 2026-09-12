@@ -19,3 +19,20 @@ def run(items):
     rendered = render_activity_flow(flow)
     assert rendered.startswith("flowchart TD\n")
     assert "Yes" in rendered
+
+
+def test_python_activity_extracts_try_async_and_control_flow() -> None:
+    flow = analyze_python_activity("""
+async def run():
+    try:
+        await fetch()
+    except TimeoutError:
+        continue_work()
+    finally:
+        cleanup()
+    return True
+""", function="run")
+
+    labels = {node.label for node in flow.nodes}
+    assert {"try", "await fetch", "call continue_work", "call cleanup", "return True"} <= labels
+    assert "except TimeoutError" in render_activity_flow(flow)
