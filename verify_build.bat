@@ -22,6 +22,9 @@ if not exist "dist\*.tar.gz" (
   echo [ERROR] Python source archive was not generated.
   exit /b 1
 )
+for %%W in (dist\*.whl) do set "WHEEL=%%~fW"
+%PYTHON% tools\verify_wheel.py "%WHEEL%"
+if errorlevel 1 exit /b 1
 
 call build_exe.bat
 if errorlevel 1 exit /b 1
