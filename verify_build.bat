@@ -8,6 +8,8 @@ if errorlevel 1 (
   exit /b 1
 )
 set "PYTHON=python"
+where py >nul 2>nul
+if not errorlevel 1 ( set "WHEEL_PYTHON=py -3" ) else ( set "WHEEL_PYTHON=%PYTHON%" )
 set "VERIFY_DIR=%TEMP%\kadoka-code-atlas-verify-%RANDOM%"
 mkdir "%VERIFY_DIR%" >nul 2>nul
 if errorlevel 1 exit /b 1
@@ -22,6 +24,9 @@ if not exist "dist\*.tar.gz" (
   echo [ERROR] Python source archive was not generated.
   exit /b 1
 )
+for %%W in (dist\*.whl) do set "WHEEL=%%~fW"
+%WHEEL_PYTHON% tools\verify_wheel.py "%WHEEL%"
+if errorlevel 1 exit /b 1
 
 call build_exe.bat
 if errorlevel 1 exit /b 1
