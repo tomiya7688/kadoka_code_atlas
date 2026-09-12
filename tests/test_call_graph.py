@@ -100,3 +100,21 @@ def b(): a()
 
     assert result.series == (("a", "b"),)
     assert result.shared == ()
+
+
+def test_partition_exposes_evaluator_statistics() -> None:
+    graph = _graph("""
+def main(): shared()
+def shared(): pass
+""")
+    result = partition_graph(graph, fan_in_threshold=2)
+
+    assert result.statistics == {
+        "series_count": 1,
+        "max_nodes_per_series": 2,
+        "cross_series_edge_count": 0,
+        "shared_node_count": 0,
+        "fan_in_distribution": (0, 1),
+        "fan_out_distribution": (0, 1),
+        "cycle_count": 0,
+    }

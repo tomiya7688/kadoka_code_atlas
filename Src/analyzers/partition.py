@@ -17,6 +17,10 @@ class RelationGraph(Protocol):
 
     def fan_in(self) -> dict[str, int]: ...
 
+    def fan_out(self) -> dict[str, int]: ...
+
+    def cycles(self) -> list[tuple[str, ...]]: ...
+
 
 @dataclass(frozen=True, slots=True)
 class GraphPartition: 
@@ -25,6 +29,26 @@ class GraphPartition:
     series: tuple[tuple[str, ...], ...]
     shared: tuple[str, ...]
     cross_series_edge_count: int
+    fan_in_distribution: tuple[int, ...]
+    fan_out_distribution: tuple[int, ...]
+    cycle_count: int
+
+    @property
+    def shared_node_count(self) -> int:
+        return len(self.shared)
+
+    @property
+    def statistics(self) -> dict[str, int | tuple[int, ...]]:
+        """Return evaluator-friendly partition metrics as plain values."""
+        return {
+            "series_count": self.series_count,
+            "max_nodes_per_series": self.max_nodes_per_series,
+            "cross_series_edge_count": self.cross_series_edge_count,
+            "shared_node_count": self.shared_node_count,
+            "fan_in_distribution": self.fan_in_distribution,
+            "fan_out_distribution": self.fan_out_distribution,
+            "cycle_count": self.cycle_count,
+        }
 
     @property
     def series_count(self) -> int:
@@ -40,9 +64,9 @@ def partition_graph(graph: RelationGraph, *, fan_in_threshold: int = 3) -> Graph
     if fan_in_threshold < 1:
         raise ValueError("fan_in_threshold must be >= 1")
 
-    shared = frozenset(
-        node for node, count in graph.fan_in().items() if count >= fan_in_threshold
-    )
+    fan_in = graph.fan_in()
+    fan_out = graph.fan_out()
+    shared = frozenset(node for node, count in fan_in.items() if count >= fan_in_threshold)
     adjacency: dict[str, set[str]] = {node: set() for node in graph.nodes if node not in shared}
     for edge in graph.edges:
         if edge.caller in adjacency and edge.callee in adjacency:
@@ -74,4 +98,11 @@ def partition_graph(graph: RelationGraph, *, fan_in_threshold: int = 3) -> Graph
         and edge.callee in series_by_node
         and series_by_node[edge.caller] != series_by_node[edge.callee]
     )
-    return GraphPartition(series_tuple, tuple(sorted(shared)), cross_edges)
+    return GraphPartition(
+        series_tuple,
+        tuple(sorted(shared)),
+        cross_edges,
+        tuple(sorted(fan_in.get(node, 0) for node in graph.nodes)),
+        tuple(sorted(fan_out.get(node, 0) for node in graph.nodes)),
+        len(graph.cycles()),
+    )
