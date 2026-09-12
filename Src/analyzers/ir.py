@@ -28,10 +28,6 @@ class CodeEntity:
     decorators: tuple[str, ...] = ()
     calls: tuple[str, ...] = ()
 
-    @property
-    def qualified_name(self) -> str:
-        return f"{self.parent}.{self.name}" if self.parent else self.name
-
 
 @dataclass(slots=True)
 class ModuleIR:
@@ -39,13 +35,3 @@ class ModuleIR:
 
     language: str
     entities: list[CodeEntity] = field(default_factory=list)
-
-    def classes(self) -> list[CodeEntity]:
-        return [entity for entity in self.entities if entity.kind is EntityKind.CLASS]
-
-    def functions(self) -> list[CodeEntity]:
-        return [
-            entity
-            for entity in self.entities
-            if entity.kind in {EntityKind.FUNCTION, EntityKind.METHOD}
-        ]

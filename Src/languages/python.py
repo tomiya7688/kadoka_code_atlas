@@ -5,6 +5,7 @@ from __future__ import annotations
 import ast
 
 from Src.analyzers.ir import CodeEntity, EntityKind, ModuleIR
+from Src.analyzers.ir_queries import qualified_name
 
 
 class PythonLanguageAdapter:
@@ -29,12 +30,12 @@ class PythonLanguageAdapter:
             if isinstance(node, ast.ClassDef):
                 entity = self._class_entity(node, source, parent)
                 entities.append(entity)
-                self._collect(node.body, source, entities, parent=entity.qualified_name)
+                self._collect(node.body, source, entities, parent=qualified_name(entity))
             elif isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
                 kind = EntityKind.METHOD if parent else EntityKind.FUNCTION
                 entity = self._function_entity(node, source, parent, kind)
                 entities.append(entity)
-                self._collect(node.body, source, entities, parent=entity.qualified_name)
+                self._collect(node.body, source, entities, parent=qualified_name(entity))
 
     def _class_entity(
         self, node: ast.ClassDef, source: str, parent: str | None

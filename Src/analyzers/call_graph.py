@@ -6,6 +6,7 @@ from collections import defaultdict
 from dataclasses import dataclass, field
 
 from .ir import ModuleIR
+from .ir_queries import functions, qualified_name
 
 
 @dataclass(frozen=True, slots=True)
@@ -22,9 +23,9 @@ class CallGraph:
     @classmethod
     def from_module(cls, module: ModuleIR) -> "CallGraph":
         edges: list[CallEdge] = []
-        for entity in module.functions():
+        for entity in functions(module):
             for callee in entity.calls:
-                edges.append(CallEdge(entity.qualified_name, callee))
+                edges.append(CallEdge(qualified_name(entity), callee))
         return cls(edges)
 
     @property

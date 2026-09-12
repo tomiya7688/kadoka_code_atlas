@@ -6,6 +6,7 @@ import re
 from dataclasses import dataclass
 
 from Src.analyzers.ir import CodeEntity, EntityKind, ModuleIR
+from Src.analyzers.ir_queries import qualified_name
 
 
 @dataclass(frozen=True, slots=True)
@@ -34,7 +35,7 @@ class RuleBasedCommentGenerator:
                     line=entity.line,
                     indent=entity.indent,
                     text=text,
-                    entity=entity.qualified_name,
+                    entity=qualified_name(entity),
                 )
             )
         return candidates

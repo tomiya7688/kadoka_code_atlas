@@ -4,6 +4,7 @@ import csv
 import io
 from dataclasses import dataclass
 from Src.analyzers.ir import CodeEntity, ModuleIR
+from Src.analyzers.ir_queries import classes, functions, qualified_name
 @dataclass(frozen=True)
 class ResponsibilityRow:
     class_name: str
@@ -25,10 +26,10 @@ def _describe(entity: CodeEntity, methods: list[CodeEntity]) -> str:
     return f"Manages {words} state and behavior."
 
 def rows(module: ModuleIR) -> list[ResponsibilityRow]:
-    classes=module.classes(); result=[]
-    for cls in classes:
-        methods=[e for e in module.entities if e.parent==cls.qualified_name and e.kind.value=="method"]
-        result.append(ResponsibilityRow(cls.qualified_name,_describe(cls,methods)))
+    class_entities=classes(module); result=[]
+    for cls in class_entities:
+        methods=[e for e in module.entities if e.parent==qualified_name(cls) and e.kind.value=="method"]
+        result.append(ResponsibilityRow(qualified_name(cls),_describe(cls,methods)))
     return result
 
 def to_markdown(rows_: list[ResponsibilityRow]) -> str:
@@ -42,7 +43,7 @@ def to_csv(rows_: list[ResponsibilityRow]) -> str:
     return output.getvalue()
 def partitions(module: ModuleIR) -> list[list[ResponsibilityRow]]:
     """Group responsibility rows by class-to-class call connectivity."""
-    class_names = [entity.qualified_name for entity in module.classes()]
+    class_names = [qualified_name(entity) for entity in classes(module)]
     parent = {name: name for name in class_names}
     def find(name):
         while parent[name] != name:
@@ -53,7 +54,7 @@ def partitions(module: ModuleIR) -> list[list[ResponsibilityRow]]:
         left, right = find(left), find(right)
         if left != right:
             parent[right] = left
-    for entity in module.functions():
+    for entity in functions(module):
         owner = entity.parent
         if owner not in parent:
             continue
