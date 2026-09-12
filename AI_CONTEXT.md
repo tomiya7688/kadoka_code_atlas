@@ -32,7 +32,7 @@ Broad exploration を止める条件:
 - target source / tests / direct dependencies の working set が分かる
 - 必要なら Out of Scope / Deferred が分かる
 
-十分なら実装へ進み、不明点が発生したときだけ追加探索する。
+十分なら実装へ進み、不明点が発生したときだけ追加探索する。`context.bat exploration-stop` で Task Capsule の機械確認もできる。
 
 ## Context Priority
 - P0: current task / Required / Acceptance
@@ -51,7 +51,7 @@ Broad exploration を止める条件:
 - Issue/PR/context workflow -> `tools/`, root `*.bat` / `*.sh`
 - architecture rule -> `specification/architecture-policy.md`
 
-Use `docs/responsibility_map.md` before broad file discovery.
+Use `docs/responsibility_map.md` or `context.bat role-map` before broad file discovery.
 
 ## Architecture Constraints
 - Language-specific AST / parser types stay behind language adapters.
@@ -63,7 +63,7 @@ Use `docs/responsibility_map.md` before broad file discovery.
 - Confirmed architecture violations and review warnings must be distinguished.
 
 ## Working Rules
-- Search first, read second.
+- Search first, read second. `context.bat search` / `path-find` are dependency-free bounded fallbacks.
 - unrelated refactor を混ぜない。
 - all docs / all Issues / repo history / full diff / full logs を無条件に読まない。
 - changed files の次は changed symbols / direct dependencies へ絞る。
@@ -71,6 +71,7 @@ Use `docs/responsibility_map.md` before broad file discovery.
 - deterministic analysis を LLM inference より優先できる箇所では優先する。
 - remote競合があり得る場合は compact remote delta を先に確認する。
 - generated / build / cache / large log は対象そのものが必要な場合だけ読む。
+- failure logs は `compact-log` で error/warning/failure + bounded tail を優先する。
 - 正確性をコンテキスト削減量より優先する。
 
 ## Validation
@@ -83,19 +84,23 @@ Use `docs/responsibility_map.md` before broad file discovery.
 - 実行できない範囲は `Unverified` として明示する。
 
 ## Low-context Commands
-Windows:
-- `next_issue.bat` — priority-first Task Capsuleを `.codex/next_issue.md` へ生成
-- `context.bat profile` — repo規模 / context budget / hotspot候補
-- `context.bat doc-index` — Markdown heading index
-- `context.bat remote-delta` — ahead/behind/remote commits/files/bounded diff
-- `context.bat compact-diff` — changed files / shortstat / commit subjects
-- `context.bat structure-index` — Python symbols/importsの構造索引
-- `context.bat validation-plan` — changed filesから検証をルーティング
-- `context.bat policy-check` — compact architecture / UPD policy check
-- `context.bat context-pack` — 一時 Context Packを `.codex/context_pack.md` へ生成
-- `pull_request.bat` — validation -> compact summary -> push -> PR
+最短の作業開始は `prepare_work.bat` / `./prepare_work.sh`。最優先 Issue のTask Capsule、remote delta、Context Packを順に準備する。
 
-Linux/macOSでは `./context.sh <command>` を使用する。
+`context.bat` / `./context.sh` の主なcommand:
+- `profile` — repo規模 / context budget / hotspot候補
+- `doc-index` — Markdown heading index
+- `search` / `path-find` — bounded dependency-free search
+- `role-map` / `truth-candidates` — 情報責務 / Source of Truth候補の索引
+- `remote-delta` — ahead/behind/remote commits/files/bounded diff
+- `compact-diff` — changed files / shortstat / commit subjects
+- `structure-index` — Python symbols/importsの構造索引
+- `validation-plan` — changed filesから検証をルーティング
+- `policy-check` — compact architecture / UPD policy check
+- `exploration-stop` — Goal/Required/Acceptance/Working Setの充足確認
+- `compact-log` — failure/warningとbounded tailだけを残す
+- `context-pack` — `.codex/context_pack.md` を生成
+
+`next_issue.bat` は priority-first Task Capsuleを `.codex/next_issue.md` へ生成し、`pull_request.bat` は validation -> compact summary -> push -> PR を行う。
 
 Safe remote update は `remote-delta --ff` を明示した場合のみ許可し、dirty/diverged state では停止する。
 
