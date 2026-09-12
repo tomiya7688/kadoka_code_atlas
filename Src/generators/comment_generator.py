@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections.abc import Mapping
 
 from Src.generators.comment_backend import CommentTextBackend, RuleBasedCommentBackend
-from Src.languages.base import LanguageAdapter
+from Src.process.contracts import CommentAdapter
 from Src.process.comment_registry import default_comment_adapters
 from Src.models import CommentCandidate
 
@@ -17,7 +17,7 @@ class UnsupportedLanguageError(ValueError):
 class CommentGenerator:
     """Insert deterministic comment candidates while preserving source statements."""
 
-    def __init__(self, adapters: Mapping[str, LanguageAdapter] | None = None, backend: CommentTextBackend | None = None) -> None:
+    def __init__(self, adapters: Mapping[str, CommentAdapter] | None = None, backend: CommentTextBackend | None = None) -> None:
         self._backend = backend or RuleBasedCommentBackend()
         self._adapters = dict(adapters or default_comment_adapters())
 
@@ -41,7 +41,7 @@ class CommentGenerator:
             lines.insert(candidate.line - 1, f"{candidate.indent}{text}{newline}")
         return "".join(lines)
 
-    def _adapter(self, language: str) -> LanguageAdapter:
+    def _adapter(self, language: str) -> CommentAdapter:
         try:
             return self._adapters[language.lower().lstrip(".")]
         except KeyError as error:
