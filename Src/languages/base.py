@@ -2,15 +2,16 @@
 
 from __future__ import annotations
 
-from typing import Protocol
-
-from Src.models import ParsedSource
+from typing import Generic, Protocol, TypeVar
 
 
-class LanguageAdapter(Protocol):
-    """Extract deterministic comment candidates from one source language."""
+Parsed = TypeVar("Parsed")
+
+
+class LanguageAdapter(Protocol, Generic[Parsed]):
+    """Convert source text into a language-neutral or boundary-specific result."""
 
     language: str
 
-    def parse(self, source: str) -> ParsedSource:
-        """Return comment candidates without changing *source*."""
+    def parse(self, source: str) -> Parsed:
+        """Return parsed data without changing *source*."""
