@@ -4,7 +4,9 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 
-from Src.languages import CSharpAdapter, LanguageAdapter, PythonAdapter
+from Src.generators.comment_backend import CommentTextBackend, RuleBasedCommentBackend
+from Src.process.contracts import CommentAdapter
+from Src.process.comment_registry import default_comment_adapters
 from Src.models import CommentCandidate
 
 
@@ -15,13 +17,13 @@ class UnsupportedLanguageError(ValueError):
 class CommentGenerator:
     """Insert deterministic comment candidates while preserving source statements."""
 
-    def __init__(self, adapters: Mapping[str, LanguageAdapter] | None = None) -> None:
-        self._adapters = dict(adapters or {
-            "python": PythonAdapter(),
-            "py": PythonAdapter(),
-            "csharp": CSharpAdapter(),
-            "cs": CSharpAdapter(),
-        })
+    def __init__(self, adapters: Mapping[str, CommentAdapter] | None = None, backend: CommentTextBackend | None = None) -> None:
+        self._backend = backend or RuleBasedCommentBackend()
+        self._adapters = dict(adapters or default_comment_adapters())
+
+    def supported_languages(self) -> tuple[str, ...]:
+        """Return registered comment adapter names in deterministic order."""
+        return tuple(sorted(self._adapters))
 
     def candidates(self, source: str, language: str) -> tuple[CommentCandidate, ...]:
         """Return suggestions only; this method never mutates source text."""
@@ -35,14 +37,13 @@ class CommentGenerator:
         lines = source.splitlines(keepends=True)
         newline = "\r\n" if "\r\n" in source else "\n"
         for candidate in reversed(candidates):
-            lines.insert(candidate.line - 1, f"{candidate.indent}{candidate.text}{newline}")
+            text = self._backend.generate(candidate)
+            lines.insert(candidate.line - 1, f"{candidate.indent}{text}{newline}")
         return "".join(lines)
 
-    def _adapter(self, language: str) -> LanguageAdapter:
+    def _adapter(self, language: str) -> CommentAdapter:
         try:
             return self._adapters[language.lower().lstrip(".")]
         except KeyError as error:
             supported = ", ".join(sorted(set(self._adapters)))
-            raise UnsupportedLanguageError(
-                f"No comment adapter for '{language}'. Supported languages: {supported}."
-            ) from error
+            raise UnsupportedLanguageError(f"No comment adapter for '{language}'. Supported languages: {supported}.") from error

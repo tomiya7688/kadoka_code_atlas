@@ -74,9 +74,16 @@ def ensure_work_branch(issue_number: int | None) -> str:
 
 def run_tests() -> None:
     print("== pytest ==")
-    completed = subprocess.run([sys.executable, "-m", "pytest"], text=True)
+    base = Path(".pytest-pr-temp")
+    base.mkdir(parents=True, exist_ok=True)
+    completed = subprocess.run(
+        [sys.executable, "-m", "pytest", "--basetemp", str(base)],
+        text=True,
+    )
     if completed.returncode != 0:
+        shutil.rmtree(base, ignore_errors=True)
         sys.exit("\nPR aborted: pytest failed.")
+    shutil.rmtree(base, ignore_errors=True)
     print("pytest passed.\n")
 
 

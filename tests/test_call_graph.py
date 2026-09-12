@@ -1,4 +1,5 @@
 from Src.analyzers.call_graph import CallGraph
+from Src.analyzers.partition import partition_graph
 from Src.languages.python import PythonLanguageAdapter
 from Src.renderers.mermaid_call_graph import render_call_graph
 
@@ -71,3 +72,49 @@ def helper(): pass
     assert rendered.startswith("flowchart LR\n")
     assert 'n_main["main"]' in rendered
     assert "n_main --> n_helper" in rendered
+
+
+def test_partition_graph_separates_high_fan_in_nodes() -> None:
+    graph = _graph(
+        """
+def first(): shared()
+def second(): shared()
+def isolated(): leaf()
+def leaf(): pass
+def shared(): pass
+"""
+    )
+    result = partition_graph(graph, fan_in_threshold=2)
+
+    assert result.shared == ("shared",)
+    assert result.series == (("first",), ("isolated", "leaf"), ("second",))
+    assert result.series_count == 3
+
+
+def test_partition_graph_handles_cycles_without_recursion() -> None:
+    graph = _graph("""
+def a(): b()
+def b(): a()
+""")
+    result = partition_graph(graph, fan_in_threshold=3)
+
+    assert result.series == (("a", "b"),)
+    assert result.shared == ()
+
+
+def test_partition_exposes_evaluator_statistics() -> None:
+    graph = _graph("""
+def main(): shared()
+def shared(): pass
+""")
+    result = partition_graph(graph, fan_in_threshold=2)
+
+    assert result.statistics == {
+        "series_count": 1,
+        "max_nodes_per_series": 2,
+        "cross_series_edge_count": 0,
+        "shared_node_count": 0,
+        "fan_in_distribution": (0, 1),
+        "fan_out_distribution": (0, 1),
+        "cycle_count": 0,
+    }

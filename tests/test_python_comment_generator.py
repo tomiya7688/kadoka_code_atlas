@@ -1,5 +1,6 @@
 from Src.generators.comments import RuleBasedCommentGenerator
 from Src.languages.python import PythonLanguageAdapter
+from Src.analyzers.ir_queries import functions, qualified_name
 from Src.languages.python_comments import apply_python_comments
 
 
@@ -12,11 +13,11 @@ class Worker:
 
     module = PythonLanguageAdapter().parse(source)
 
-    assert [entity.qualified_name for entity in module.entities] == [
+    assert [qualified_name(entity) for entity in module.entities] == [
         "Worker",
         "Worker.load_data",
     ]
-    method = module.functions()[0]
+    method = functions(module)[0]
     assert method.parameters == ("self", "path")
     assert "open" in method.calls
 

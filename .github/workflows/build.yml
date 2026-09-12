@@ -26,10 +26,8 @@ jobs:
           python -m pip install --upgrade pip build
           python -m pip install -e ".[test]"
 
-      - name: Run project-operation tests
-        # Full pytest is tracked by #23 because pre-existing comment-generator tests
-        # currently fail during collection on main.
-        run: python -m pytest tests/test_next_issue.py tests/test_context_tool.py
+      - name: Run full test suite
+        run: python -m pytest
 
       - name: Check architecture policy
         run: python tools/context_tool.py policy-check

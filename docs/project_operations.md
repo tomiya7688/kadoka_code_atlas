@@ -3,6 +3,22 @@
 Kadoka Code Atlas uses GitHub Issues as the task ledger and defaults to `1 Issue ~= 1 PR`.
 
 ## Standard flow
+## Remote latest first
+
+### Build verification
+
+`verify_build.bat` builds the wheel, source archive, and EXE, then runs both CLI outputs and static/test checks. `pull_request.bat` runs this verification before creating or updating the GitHub PR.
+
+作業開始時は、リモートの最新状態を確認してから Issue の実装に入る。
+
+```powershell
+git status --short --branch
+git fetch --prune origin
+git rev-list --left-right --count main...origin/main
+git pull --ff-only origin main
+```
+
+fast-forward できない場合は、ローカルコミットを確認してから `git merge --no-edit origin/main` で取り込む。競合は解消後にテストで確認し、force push でリモート履歴を上書きしない。
 
 ```text
 Issue
