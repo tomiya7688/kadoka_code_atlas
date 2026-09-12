@@ -19,8 +19,8 @@ dist/
 .coverage
 htmlcov/
 
-# Local Codex context
-.codex/next_issue.md
+# Generated local AI/context artifacts
+.codex/
 
 # IDE / OS
 .vscode/
