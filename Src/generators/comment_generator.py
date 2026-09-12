@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 
-from Src.languages import CSharpAdapter, CppAdapter, GDScriptAdapter, JavaAdapter, LanguageAdapter
+from Src.languages import CSharpAdapter, CppAdapter, GDScriptAdapter, GoAdapter, JavaAdapter, LanguageAdapter
 from Src.languages.python_comments_adapter import PythonAdapter
 from Src.models import CommentCandidate
 
@@ -23,6 +23,7 @@ class CommentGenerator:
             "gdscript": GDScriptAdapter(), "gd": GDScriptAdapter(),
             "java": JavaAdapter(),
             "cpp": CppAdapter(), "cxx": CppAdapter(),
+            "go": GoAdapter(),
         })
 
     def candidates(self, source: str, language: str) -> tuple[CommentCandidate, ...]:
