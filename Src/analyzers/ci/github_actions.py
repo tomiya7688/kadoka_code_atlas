@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import re
 
-from .models import CIJob, CIStep, CIWorkflow
+from Src.models.ci import CIJob, CIStep, CIWorkflow
 
 _JOB = re.compile(r"^  ([A-Za-z0-9_.-]+):\s*$")
 _STEP_NAME = re.compile(r"^      - name:\s*(.+?)\s*$")

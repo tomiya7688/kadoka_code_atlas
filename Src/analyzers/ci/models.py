@@ -1,26 +1,5 @@
-"""Language-neutral CI workflow models."""
+"""Compatibility exports for CI logical models."""
 
-from __future__ import annotations
+from Src.models.ci import CIJob, CIStep, CIWorkflow
 
-from dataclasses import dataclass, field
-
-
-@dataclass(frozen=True, slots=True)
-class CIStep:
-    name: str
-    command: str | None = None
-    action: str | None = None
-
-
-@dataclass(frozen=True, slots=True)
-class CIJob:
-    name: str
-    needs: tuple[str, ...] = ()
-    steps: tuple[CIStep, ...] = ()
-
-
-@dataclass(frozen=True, slots=True)
-class CIWorkflow:
-    name: str | None
-    trigger: tuple[str, ...]
-    jobs: tuple[CIJob, ...] = field(default_factory=tuple)
+__all__ = ["CIJob", "CIStep", "CIWorkflow"]
