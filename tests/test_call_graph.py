@@ -1,4 +1,5 @@
 from Src.analyzers.call_graph import CallGraph
+from Src.analyzers.partition import partition_graph
 from Src.languages.python import PythonLanguageAdapter
 from Src.renderers.mermaid_call_graph import render_call_graph
 
@@ -71,3 +72,31 @@ def helper(): pass
     assert rendered.startswith("flowchart LR\n")
     assert 'n_main["main"]' in rendered
     assert "n_main --> n_helper" in rendered
+
+
+def test_partition_graph_separates_high_fan_in_nodes() -> None:
+    graph = _graph(
+        """
+def first(): shared()
+def second(): shared()
+def isolated(): leaf()
+def leaf(): pass
+def shared(): pass
+"""
+    )
+    result = partition_graph(graph, fan_in_threshold=2)
+
+    assert result.shared == ("shared",)
+    assert result.series == (("first",), ("isolated", "leaf"), ("second",))
+    assert result.series_count == 3
+
+
+def test_partition_graph_handles_cycles_without_recursion() -> None:
+    graph = _graph("""
+def a(): b()
+def b(): a()
+""")
+    result = partition_graph(graph, fan_in_threshold=3)
+
+    assert result.series == (("a", "b"),)
+    assert result.shared == ()
