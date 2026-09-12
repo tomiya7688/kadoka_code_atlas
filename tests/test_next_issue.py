@@ -1,4 +1,4 @@
-from tools.next_issue import priority
+from tools.next_issue import extract_sections, priority, route_working_set, select_issue
 
 
 def test_priority_uses_label_before_title() -> None:
@@ -46,3 +46,47 @@ def test_priority_uses_issue_number_as_stable_tiebreaker() -> None:
     newer = {"number": 20, "title": "[P1] newer", "labels": []}
 
     assert min([newer, older], key=priority) is older
+
+
+def test_select_issue_filters_explicit_meta_items() -> None:
+    meta = {"number": 1, "title": "[P0] roadmap", "labels": [{"name": "meta"}]}
+    work = {"number": 2, "title": "[P1] implementation", "labels": []}
+
+    assert select_issue([meta, work]) is work
+
+
+def test_extract_sections_supports_japanese_issue_headings() -> None:
+    body = """## 概要
+構造索引を追加する。
+
+## 基本方針
+決定論的に生成する。
+
+## 完了条件
+- [ ] JSONを生成できる
+- [ ] テストが通る
+
+## 対象外
+GUIは今回扱わない。
+"""
+
+    sections = extract_sections(body)
+
+    assert sections["goal"] == "構造索引を追加する。"
+    assert sections["required"] == "決定論的に生成する。"
+    assert "JSONを生成できる" in sections["acceptance"]
+    assert sections["out_of_scope"] == "GUIは今回扱わない。"
+
+
+def test_route_working_set_uses_title_for_existing_unlabeled_issues() -> None:
+    issue = {
+        "number": 20,
+        "title": "[P1] コンポーネント図生成機を実装する",
+        "labels": [],
+    }
+
+    route = route_working_set(issue)
+
+    assert "Src/analyzers/" in route["source"]
+    assert "Src/renderers/" in route["source"]
+    assert "docs/specs/diagrams.md" in route["docs"]
