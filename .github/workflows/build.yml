@@ -31,6 +31,9 @@ jobs:
         # currently fail during collection on main.
         run: python -m pytest tests/test_next_issue.py tests/test_context_tool.py
 
+      - name: Run comment CLI tests
+        run: python -m pytest tests/test_app_cli.py tests/test_comment_backend.py tests/test_comment_backend_integration.py
+
       - name: Check architecture policy
         run: python tools/context_tool.py policy-check
 
