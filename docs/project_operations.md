@@ -7,13 +7,13 @@ Kadoka Code Atlas uses GitHub Issues as the task ledger and defaults to `1 Issue
 ```text
 Issue
  -> priority + Goal / Required / Acceptance
- -> next_issue.bat (Task Capsule)
- -> remote-delta when concurrent work is possible
+ -> prepare_work.bat / prepare_work.sh
+ -> Task Capsule + remote delta + Context Pack
  -> Responsibility / Change Routing
- -> search-first working set
+ -> bounded search / structure index
  -> implementation
  -> targeted validation + policy check
- -> compact diff / Context Pack when useful
+ -> compact diff / compact log when useful
  -> pull_request.bat
  -> CI / review / merge
 ```
@@ -34,23 +34,30 @@ Read in this order:
 
 ```text
 Task Capsule / metadata
- -> Responsibility Map
- -> search / structure index
+ -> Responsibility Map / file role map
+ -> bounded search / structure index
  -> target source
  -> matching tests
  -> direct dependencies
  -> detailed docs only if needed
 ```
 
-Stop broad exploration when Goal, Required, Acceptance, and the working set are sufficient. Reopen only the relevant source of truth if a new ambiguity appears.
+Stop broad exploration when Goal, Required, Acceptance, and the working set are sufficient. `context.bat exploration-stop` checks those fields mechanically; a passing result means broad discovery can stop, not that implementation is correct.
 
 ## Routing sources
 - `docs/responsibility_map.md`: module/file ownership
 - `specification/architecture-policy.md`: normative Required/Recommended/Advisory rules
 - `docs/current_state.md`: current capabilities and blockers
 - `docs/specs/`: feature details, only when routed by the task
+- `context.bat role-map`: mechanical file-role index
+- `context.bat truth-candidates`: likely authoritative locations without claiming authority automatically
 
-Large documents should be entered through heading search (`context.bat doc-index`) rather than unconditional full reads.
+Large documents should be entered through heading search (`doc-index`) or bounded text search rather than unconditional full reads.
+
+## Search-first / Read-second
+`context.bat search` and `path-find` are dependency-free bounded fallbacks. If `rg`, `fd`, IDE index, ctags, tree-sitter, or another stronger local tool is already available, it may be preferred; Kadoka must not require it for the basic workflow.
+
+Search/index output selects source to read. It never replaces the source itself.
 
 ## Source Structure Index
 `context.bat structure-index` emits a deterministic Python symbol/import index for `Src/` and `tools/`. It is a fallback routing index; richer Common IR/call/dependency analysis from Code Atlas should replace or augment it as the project matures.
@@ -69,13 +76,15 @@ Use `context.bat remote-delta` when another AI/chat/developer may have changed r
 `remote-delta --ff` is explicit. It refuses dirty/diverged state and only performs a fast-forward.
 
 ## Context Pack
-`context.bat context-pack` creates `.codex/context_pack.md` from the current Task Capsule, changed files, validation plan, compact diff, and remote status. It is temporary derived context, not a specification; regenerate it instead of accumulating old packets.
+`context.bat context-pack` creates `.codex/context_pack.md` from the current Task Capsule, changed files, validation plan, compact diff, remote status, and exploration status. It is temporary derived context, not a specification; regenerate it instead of accumulating old packets.
 
-## Repository profile
+## Repository profile / context budget
 `context.bat profile` reports repository statistics, approximate full-read token cost, file types, and largest text files. Use it to identify context hotspots, not as a quality score.
 
-## Compact diff
-`context.bat compact-diff` returns changed-file status, shortstat, and commit subjects. This is the default handoff/PR summary input. Full diff is still used for actual review or ambiguity when needed.
+## Compact change and log inspection
+`compact-diff` returns changed-file status, shortstat, and commit subjects. This is the default handoff/PR summary input. Full diff is still used for actual review or ambiguity when needed.
+
+`compact-log` keeps error/warning/failure lines plus a bounded tail. Successful logs should normally be summarized as pass/fail; expand raw logs only around a failure.
 
 ## Validation Routing
 `context.bat validation-plan` maps changed files to useful evidence.
@@ -87,10 +96,10 @@ Use `context.bat remote-delta` when another AI/chat/developer may have changed r
 - generated/bulk changes: reproducible transform / dry-run / representative validation
 - random/time-dependent behavior: fixed input/seed/time bound + structured observation
 
-A command that checks zero relevant targets is not evidence. Successful logs stay compact; failures may expand around the failure. Anything not checked is `Unverified`.
+A command that checks zero relevant targets is not evidence. Anything not checked is `Unverified`.
 
 ## Policy Routing
-Normative rules live in `specification/architecture-policy.md`. `context.bat policy-check` checks only mechanically useful rules and distinguishes confirmed errors from warnings/review signals. Semantic architecture remains a targeted review task.
+Normative rules live in `specification/architecture-policy.md`. `policy-check` checks only mechanically useful rules and distinguishes confirmed errors from warnings/review signals. Semantic architecture remains a targeted review task.
 
 A Required-rule exception records rule, reason, scope, mitigation, removal/review condition, and source-of-truth reference.
 
@@ -108,21 +117,16 @@ A Required-rule exception records rule, reason, scope, mitigation, removal/revie
 Do not duplicate the same detailed specification across these surfaces.
 
 ## Commands
-Windows: `context.bat <command>`; Linux/macOS: `./context.sh <command>`.
+Windows: `context.bat command`; Linux/macOS: `./context.sh command`.
 
-Available context commands:
-- `profile`
-- `doc-index`
-- `remote-delta`
-- `compact-diff`
-- `structure-index`
-- `validation-plan`
-- `policy-check`
-- `context-pack`
+Main commands:
+- discovery: `profile`, `doc-index`, `search`, `path-find`, `role-map`, `truth-candidates`, `structure-index`
+- state/change: `remote-delta`, `compact-diff`, `context-pack`
+- control: `exploration-stop`, `validation-plan`, `policy-check`, `compact-log`
 
-`next_issue.bat` creates the priority-first Task Capsule. `pull_request.bat` performs the low-context validation/commit/push/PR flow.
+`prepare_work.bat` / `prepare_work.sh` runs the normal preparation chain. `next_issue.bat` creates the priority-first Task Capsule. `pull_request.bat` performs the low-context validation/commit/push/PR flow.
 
 ## Adopted methods
-The project adopts the applicable high-value methods from `ai-context-reducer` and UPD policy practice: compact AI entrypoint, Current State, Task Capsule/Context Pack, Search-first/Read-second, exploration stop conditions, explicit Out of Scope, priority-first actionable Issue selection, Task/Change Routing, Responsibility Map, Source Structure Index, context profile/budget, Remote Delta First, compact diff, Validation Routing, Policy Routing/rule strength/scoped exceptions, deterministic-first structural analysis, generated/noisy-data exclusion, compact handoff reporting, and clear source-of-truth responsibilities.
+The project adopts the applicable high-value methods from `ai-context-reducer` and UPD policy practice: compact AI entrypoint, Current State, Task Capsule/Context Pack, Search-first/Read-second, bounded search/path discovery, exploration stop conditions, explicit Out of Scope, priority-first actionable Issue selection, Task/Change Routing, Responsibility Map, file-role and source-of-truth indexing, Source Structure Index, context profile/budget/hotspots, Remote Delta First, compact diff/log handling, Validation Routing, Policy Routing/rule strength/scoped exceptions, deterministic-first structural analysis, generated/noisy-data exclusion, compact handoff reporting, and clear information responsibilities.
 
 We do not maintain a second permanent full-repository analysis framework or an always-on giant call-graph cache. Code Atlas itself should become the richer structure-index provider as its shared analysis matures.
