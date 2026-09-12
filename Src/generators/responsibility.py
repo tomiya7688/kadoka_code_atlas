@@ -40,3 +40,29 @@ def to_csv(rows_: list[ResponsibilityRow]) -> str:
     output=io.StringIO(); writer=csv.writer(output,lineterminator="\n"); writer.writerow(["Class","Responsibility"])
     writer.writerows((r.class_name,r.responsibility) for r in rows_)
     return output.getvalue()
+def partitions(module: ModuleIR) -> list[list[ResponsibilityRow]]:
+    """Group responsibility rows by class-to-class call connectivity."""
+    class_names = [entity.qualified_name for entity in module.classes()]
+    parent = {name: name for name in class_names}
+    def find(name):
+        while parent[name] != name:
+            parent[name] = parent[parent[name]]
+            name = parent[name]
+        return name
+    def union(left, right):
+        left, right = find(left), find(right)
+        if left != right:
+            parent[right] = left
+    for entity in module.functions():
+        owner = entity.parent
+        if owner not in parent:
+            continue
+        for call in entity.calls:
+            target = next((name for name in class_names if call == name or call.startswith(name + ".")), None)
+            if target:
+                union(owner, target)
+    grouped: dict[str, list[ResponsibilityRow]] = {}
+    by_name = {row.class_name: row for row in rows(module)}
+    for name in class_names:
+        grouped.setdefault(find(name), []).append(by_name[name])
+    return sorted((sorted(group, key=lambda row: row.class_name) for group in grouped.values()), key=lambda group: group[0].class_name)
