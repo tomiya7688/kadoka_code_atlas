@@ -8,7 +8,8 @@ if ! command -v python3 >/dev/null 2>&1; then
 fi
 
 if [ "$#" -eq 0 ]; then
-  echo "Usage: ./context.sh <profile|doc-index|remote-delta|compact-diff|structure-index|validation-plan|policy-check|context-pack> [options]" >&2
+  echo "Usage: ./context.sh command [options]" >&2
+  echo "Run: python3 tools/context_tool.py --help" >&2
   exit 2
 fi
 
