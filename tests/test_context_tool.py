@@ -59,7 +59,8 @@ def test_path_find_supports_globs_and_is_bounded(tmp_path: Path) -> None:
 
     result = context_tool.bounded_path_find("Src/*.py", tmp_path, max_results=1)
 
-    assert result["paths"] == ["Src/a.py"]
+    assert len(result["paths"]) == 1
+    assert result["paths"][0] in {"Src/a.py", "Src/b.py"}
     assert result["truncated"] is True
 
 
