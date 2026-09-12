@@ -1,140 +1,128 @@
-# Project operations
+# Project Operations
 
-Kadoka Code Atlas は Issue を唯一のタスク台帳として扱い、原則 `1 Issue ~= 1 PR` で進めます。運用は `ai-context-reducer` の原則を適応し、必要情報を先に選別してから AI へ渡します。
+Kadoka Code Atlas uses GitHub Issues as the task ledger and defaults to `1 Issue ~= 1 PR`.
 
 ## Standard flow
 
 ```text
-conversation / idea
-  -> GitHub Issue
-  -> priority
-  -> next_issue.bat
-  -> .codex/next_issue.md
-  -> scoped implementation
-  -> targeted validation
-  -> pull_request.bat
-  -> pytest
-  -> compact change summary
-  -> PR
-  -> CI / review
-  -> merge
+Issue
+ -> priority + Goal / Required / Acceptance
+ -> next_issue.bat (Task Capsule)
+ -> remote-delta when concurrent work is possible
+ -> Responsibility / Change Routing
+ -> search-first working set
+ -> implementation
+ -> targeted validation + policy check
+ -> compact diff / Context Pack when useful
+ -> pull_request.bat
+ -> CI / review / merge
 ```
 
-## Priority
-- P0: プロジェクト成立に必要な基盤・アーキテクチャ・主要入口
-- P1: 主要機能
-- P2: 拡張・利便性改善
-- P3: 将来案・低優先改善
+## Task selection
+- P0: foundation / blocking correctness
+- P1: major capabilities
+- P2: extensions / productivity
+- P3: future / low-priority improvements
 
-priority label がある場合は label を正とします。label が無い既存 Issue ではタイトル先頭の `[P0]`〜`[P3]` をフォールバックとして扱います。
+Priority labels are authoritative; `[P0]`-`[P3]` title prefixes are a fallback. Explicit meta/roadmap/umbrella/index items are skipped by automatic selection when actionable work exists.
 
-## Issue rules
-Issue には可能な限り次を含めます。
+Issues should contain Goal, Required constraints, Acceptance, Priority, and Out of Scope/Deferred when needed. `next_issue.bat` extracts these into `.codex/next_issue.md`; the original Issue remains authoritative.
 
-- Goal: 何を達成するか
-- Required: 守る制約・必要要件
-- Acceptance Criteria: 何をもって完了とするか
-- Priority
-- 関連 spec / subsystem が明確ならその参照
+## Exploration control
 
-Issue が大きすぎる場合は子 Issue に分けます。実装中に無関係なリファクタを混ぜません。
+Read in this order:
 
-## Context reduction rules
-- 最初に全 repository / 全 docs / 全 Issues を読まない
-- `.codex/next_issue.md` がある場合はその Issue だけを現在タスクとする
-- search / routing で対象を絞ってから source を読む
-- Goal / Required / Acceptance と必要な working set が揃ったら探索を止める
-- 要約は索引として使い、不足時だけ原典へ戻る
-- full diff は通常読まず、changed files / diff stat を先に確認する
-- 成功ログ全文は保持せず、失敗時だけ必要範囲を読む
+```text
+Task Capsule / metadata
+ -> Responsibility Map
+ -> search / structure index
+ -> target source
+ -> matching tests
+ -> direct dependencies
+ -> detailed docs only if needed
+```
 
-## Task routing
+Stop broad exploration when Goal, Required, Acceptance, and the working set are sufficient. Reopen only the relevant source of truth if a new ambiguity appears.
 
-| Task | Source | Tests | Docs |
-|---|---|---|---|
-| language parsing / adapter | `Src/languages/` | language-specific tests | related spec |
-| relationship / flow analysis | `Src/analyzers/` | analyzer / graph tests | diagram / analysis spec |
-| class/sequence/etc generation | `Src/generators/` | generator tests | `docs/specs/diagrams.md` |
-| comment generation | generators + language adapters | comment tests | `docs/specs/comment_generator.md` |
-| output formats | `Src/renderers/` | renderer tests | diagram/output spec |
-| design evaluation | `Src/evaluators/` | evaluator tests | `docs/specs/design_evaluation.md` |
-| CI analysis | analyzer / tooling area | targeted CI tests | `docs/specs/ci_analyzer.md` |
-| issue / PR automation | `tools/`, root `*.bat` | tool tests | this document |
-| architecture boundary | relevant source + docs | affected tests | `docs/architecture/` |
+## Routing sources
+- `docs/responsibility_map.md`: module/file ownership
+- `specification/architecture-policy.md`: normative Required/Recommended/Advisory rules
+- `docs/current_state.md`: current capabilities and blockers
+- `docs/specs/`: feature details, only when routed by the task
 
-## Change routing
-変更カテゴリから最初に読む場所を決めます。
+Large documents should be entered through heading search (`context.bat doc-index`) rather than unconditional full reads.
 
-- parser change: language adapter -> Common IR contract -> matching tests
-- IR change: IR contract -> all direct consumers -> focused compatibility tests
-- analyzer change: analyzer -> generator/evaluator consumers only if interface changes
-- generator change: generator -> renderer contract only if output model changes
-- renderer change: renderer only; analyzer を読まない
-- GUI change: UI -> Process boundary -> headless behavior tests first
-- data access change: Data boundary -> Process Messenger contract
+## Source Structure Index
+`context.bat structure-index` emits a deterministic Python symbol/import index for `Src/` and `tools/`. It is a fallback routing index; richer Common IR/call/dependency analysis from Code Atlas should replace or augment it as the project matures.
 
-## Validation routing
-### Source / algorithm change
-1. matching targeted tests
-2. nearby regression tests
-3. PR 前に full `pytest`
+Prefer bounded expansion:
 
-### Architecture / routing docs only
-- link / path consistency
-- examples and invariants review
-- affected tooling tests when behavior is changed
+```text
+target symbol -> direct relations -> matching tests -> deeper graph only if needed
+```
 
-### GUI / interactive change
-- headless / application logic tests first
-- Acceptance に表示確認が必要な場合だけ visual confirmation
+Fan-in/fan-out/cycles are impact-routing signals, not automatic design verdicts.
 
-### Build / packaging change
-- unit tests
-- build
-- packaged artifact smoke when applicable
+## Remote Delta First
+Use `context.bat remote-delta` when another AI/chat/developer may have changed remote state. Inspect ahead/behind, commit subjects, changed files, shortstat, then the bounded diff excerpt. Read full changes only when the current task intersects them.
 
-実行できない検証は `Unverified` として PR に明記します。
+`remote-delta --ff` is explicit. It refuses dirty/diverged state and only performs a fast-forward.
 
-## Remote delta
-複数 AI / chat / developer が同じ remote を触る場合、実装前に full diff ではなく次を優先します。
+## Context Pack
+`context.bat context-pack` creates `.codex/context_pack.md` from the current Task Capsule, changed files, validation plan, compact diff, and remote status. It is temporary derived context, not a specification; regenerate it instead of accumulating old packets.
 
-1. recent commit summary
-2. changed files
-3. diff stat
-4. 必要なファイルだけ詳細確認
+## Repository profile
+`context.bat profile` reports repository statistics, approximate full-read token cost, file types, and largest text files. Use it to identify context hotspots, not as a quality score.
 
-競合可能性が判明した場合だけ詳細 diff へ進みます。
+## Compact diff
+`context.bat compact-diff` returns changed-file status, shortstat, and commit subjects. This is the default handoff/PR summary input. Full diff is still used for actual review or ambiguity when needed.
 
-## Low-context tools
-### `next_issue.bat`
-- open Issues を取得
-- priority で1件だけ選ぶ
-- deterministic に短い要約を作る
-- `.codex/next_issue.md` へ必要 context を出す
+## Validation Routing
+`context.bat validation-plan` maps changed files to useful evidence.
 
-### `pull_request.bat`
-- `pytest` を実行
-- work branch 上で commit
-- changed-file names / diff statistics だけで compact PR summary を作る
-- push / PR 作成
+- logic: targeted tests -> regression -> broader suite when baseline permits
+- architecture: targeted tests + `policy-check`
+- GUI: headless behavior first; visual confirmation when visual correctness is Acceptance
+- packaging: tests -> build -> artifact smoke when source checks are insufficient
+- generated/bulk changes: reproducible transform / dry-run / representative validation
+- random/time-dependent behavior: fixed input/seed/time bound + structured observation
 
-失敗・曖昧さがある場合だけ full diff / log を追加で確認します。
+A command that checks zero relevant targets is not evidence. Successful logs stay compact; failures may expand around the failure. Anything not checked is `Unverified`.
 
-## Adoption scope
-`ai-context-reducer` から採用するもの:
-- compact AI entrypoint
-- search first / read second
-- exploration stop condition
-- Source of Truth
-- Task / Change Routing
-- Validation Routing
-- Remote Delta First
-- unrelated refactor separation
-- Unverified areas
+## Policy Routing
+Normative rules live in `specification/architecture-policy.md`. `context.bat policy-check` checks only mechanically useful rules and distinguishes confirmed errors from warnings/review signals. Semantic architecture remains a targeted review task.
 
-現時点で常設しないもの:
-- 大規模な生成 Source Structure Index
-- 常時更新する巨大 call graph cache
-- 複雑な要約キャッシュ
+A Required-rule exception records rule, reason, scope, mitigation, removal/review condition, and source-of-truth reference.
 
-これらは repository 規模と反復コストが増え、維持費より削減効果が大きくなった時点で導入します。
+## Information responsibilities
+- README: human overview
+- AI_CONTEXT: compact AI routing
+- Current State: capabilities / blockers
+- Responsibility Map: ownership routing
+- docs: explanation / feature design
+- specification: normative rules
+- Issues: requirements / priority / incomplete work
+- source + tests: implemented behavior
+- `.codex/` and generated reports/diagrams: derived artifacts
+
+Do not duplicate the same detailed specification across these surfaces.
+
+## Commands
+Windows: `context.bat <command>`; Linux/macOS: `./context.sh <command>`.
+
+Available context commands:
+- `profile`
+- `doc-index`
+- `remote-delta`
+- `compact-diff`
+- `structure-index`
+- `validation-plan`
+- `policy-check`
+- `context-pack`
+
+`next_issue.bat` creates the priority-first Task Capsule. `pull_request.bat` performs the low-context validation/commit/push/PR flow.
+
+## Adopted methods
+The project adopts the applicable high-value methods from `ai-context-reducer` and UPD policy practice: compact AI entrypoint, Current State, Task Capsule/Context Pack, Search-first/Read-second, exploration stop conditions, explicit Out of Scope, priority-first actionable Issue selection, Task/Change Routing, Responsibility Map, Source Structure Index, context profile/budget, Remote Delta First, compact diff, Validation Routing, Policy Routing/rule strength/scoped exceptions, deterministic-first structural analysis, generated/noisy-data exclusion, compact handoff reporting, and clear source-of-truth responsibilities.
+
+We do not maintain a second permanent full-repository analysis framework or an always-on giant call-graph cache. Code Atlas itself should become the richer structure-index provider as its shared analysis matures.
