@@ -1,14 +1,12 @@
 # Kadoka Code Atlas — Agent Guide
 
 ## Start here
-Read `AI_CONTEXT.md` first. It is the compact routing index for this repository.
+Read `AI_CONTEXT.md` first. It is the compact routing index.
 
-If `.codex/next_issue.md` exists, treat the Issue described there as the current highest-priority task. Do not fetch or load unrelated Issues unless the selected Issue requires them.
-
-Detailed project operations are in `docs/project_operations.md`. UPD layer rules are in `docs/architecture/upd_commander.md`.
+If `.codex/next_issue.md` exists, treat that Issue as the active task. Do not fetch unrelated Issues unless the selected task requires them. Use `docs/responsibility_map.md` to find the initial source/test area and `specification/architecture-policy.md` for normative rules.
 
 ## Purpose
-Kadoka Code Atlas is a source-code analysis toolkit that generates diagrams, tables, comments, evaluations, and CI-oriented analysis results.
+Kadoka Code Atlas is a source-code analysis toolkit that generates diagrams, tables, comments, evaluations, and CI-oriented analysis results while keeping language-specific parsing, shared analysis, and output formats replaceable.
 
 ## Primary analysis targets
 - Python
@@ -18,64 +16,84 @@ Kadoka Code Atlas is a source-code analysis toolkit that generates diagrams, tab
 - Java
 - Go
 
-Python is the first analysis target. Implementation choices must not make the architecture dependent on a single analysis language.
+Python is normally the first implementation target for new analysis features. Do not make shared architecture dependent on one analysis language.
 
-## Repository structure
-- `Src/analyzers/` — deterministic/static analysis
+## Repository responsibility boundaries
+- `Src/languages/` — language-specific parsing / adapters
+- `Src/analyzers/` — deterministic relationship / graph / flow analysis
+- `Src/models/` — passive shared data contracts
 - `Src/generators/` — logical output generation
-- `Src/renderers/` — Mermaid/text/other rendering
-- `Src/evaluators/` — design/code quality evaluation
-- `Src/languages/` — language-specific parsing and adapters
-- `tools/` — project-operation helpers
-- `app.py` — application entry point
-- `run.bat` — Windows launcher
+- `Src/renderers/` — Mermaid/text/future format serialization
+- `Src/evaluators/` — design/code-quality evaluation
+- `tools/` — local Issue/PR/context helpers
+- `docs/` — explanatory architecture, current state, routing, feature design
+- `specification/` — normative project rules
 
-## Architecture rules
-- Keep language-specific parsing inside `Src/languages/`.
-- Prefer language-independent intermediate representations between parsing and generation.
-- Common IR stores data only; do not add analysis, evaluation, rendering, or convenience behavior to it.
-- Keep analysis logic independent from UI and rendering.
-- Prefer deterministic static analysis whenever practical.
-- LLM-assisted or dynamic analysis must be explicitly separated from deterministic static analysis.
-- Generators produce logical results; renderers format them.
-- Reuse shared analysis results across multiple diagram generators instead of reparsing the same code independently.
+Detailed ownership is in `docs/responsibility_map.md`.
 
-### UPD boundary
-Kadoka Code Atlas adopts the UI / Process / Data separation from UPD Commander Base Design.
+## Required architecture rules
+- Keep language-specific AST/parser/library types inside the language boundary.
+- Shared IR/models must remain language-neutral and should not own orchestration/evaluation/rendering behavior.
+- Keep analysis logic independent from UI and renderer syntax.
+- Prefer deterministic static analysis when information can be obtained mechanically.
+- Separate LLM-assisted / inferred information from confirmed deterministic results.
+- Reuse shared analysis results across multiple generators/evaluators instead of reparsing independently.
+- Renderers must not parse source languages.
+- UPD application boundary: UI handles presentation/input, Process handles orchestration/analysis flow, Data handles I/O/persistence/external-data details.
+- Commander routes work and stays thin; Messenger crosses a boundary and contains no domain processing.
 
-- UI: input, presentation, user-facing launch flow
-- Process: orchestration, analysis, generation, evaluation
-- Data: source/config/file/external data access
-- Commander selects what to call and stays thin.
-- Messenger handles cross-layer communication and contains no business logic.
-- UI must not directly access Data.
-
-See `docs/architecture/upd_commander.md` for the detailed boundary rules.
+The complete Required/Recommended/Advisory policy is `specification/architecture-policy.md`.
 
 ## Output policy
 - Diagram output defaults to Mermaid.
 - Comment generation writes comments into source code.
 - Tables should use simple machine-readable structures where practical.
-- PlantUML and other output formats belong behind renderer boundaries.
-
-## Class-diagram grouping rule
-Default to caller-centered diagrams. If one class is referenced by many callers, generate a dedicated callee-centered diagram for that heavily referenced class.
+- PlantUML and future formats belong behind renderer boundaries.
+- Class diagrams default to caller-centered grouping; heavily referenced classes may get dedicated callee-centered views.
 
 ## Low-context workflow
-Use `next_issue.bat` before starting general Issue work. It selects one highest-priority Issue and writes `.codex/next_issue.md` deterministically.
+Before general Issue work, use `next_issue.bat` to select one priority task and create a structured Task Capsule.
 
-Use `pull_request.bat` after completing an Issue. It runs `pytest`, stops on failure, commits local changes, pushes the work branch, and creates a PR using changed-file names and diff statistics for its summary.
+For concurrent work, use `context.bat remote-delta` (or `./context.sh remote-delta`) before broad re-reading. It reports ahead/behind, commit subjects, changed files, shortstat, and a bounded diff excerpt. `--ff` is explicit and only allows a clean fast-forward.
 
-Do not load the full diff merely to prepare a PR unless a failure or ambiguity requires inspection.
+Useful commands:
+- `context.bat profile`
+- `context.bat doc-index`
+- `context.bat structure-index`
+- `context.bat compact-diff`
+- `context.bat validation-plan`
+- `context.bat policy-check`
+- `context.bat context-pack`
+
+Use `pull_request.bat` after completing an Issue. It validates, commits, pushes, and creates a compact PR without requiring a full-diff read merely to write the summary.
 
 ## Context discipline
 - Search first, read second.
-- Stop broad exploration when Goal / Required / Acceptance and the working set are sufficient.
-- Read only the relevant file under `docs/specs/` for the feature being modified.
-- Do not load every feature specification, all Issues, or repository history by default.
-- Keep unrelated refactors out of the current Issue.
-- If a summary is insufficient for a decision, return to the source of truth.
-- Report validation that could not be executed as `Unverified`.
+- Stop broad exploration once Goal / Required / Acceptance / working set are sufficient.
+- Prefer current-task source -> matching tests -> direct dependencies -> detailed docs when needed.
+- Do not load all feature specs, all Issues, repository history, full logs, or full diffs by default.
+- Treat generated Context Packs/indexes/diagrams as routing aids, not source of truth.
+- Use bounded symbol/graph/diff expansion when available.
+- Keep unrelated refactors and deferred features out of the active Issue.
+- Return to original source/tests/docs when an index or summary is insufficient.
+- Report unexecuted validation as `Unverified`.
+
+## Validation discipline
+Choose evidence by change type. Targeted checks come first; completion gates expand only as needed. A passing command that inspected zero relevant targets is not evidence. Visual acceptance requires visual confirmation when the UI itself is the requirement. Packaging changes should validate the generated artifact when source-only checks are insufficient.
+
+CI also runs the compact architecture policy checker. Confirmed violations are errors; uncertain architectural signals remain warnings/review candidates.
+
+## Information responsibilities
+- README: human overview / setup
+- AI_CONTEXT: compact AI routing
+- Current State: current capabilities / blockers
+- Responsibility Map: file/module routing
+- docs: explanation / feature design
+- specification: normative policy
+- Issues: requirements / priority / unfinished work
+- source + tests: implemented behavior
+
+Do not duplicate the same detailed specification across these surfaces.
 
 ## License
 MIT
