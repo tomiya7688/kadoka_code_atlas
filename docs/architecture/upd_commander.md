@@ -1,127 +1,125 @@
-# UPD Commander adoption
+# UPD Commander Adoption
 
-Kadoka Code Atlas は `upd-commander-base-design` の UI / Process / Data 分離と Commander / Messenger の責務分離を採用します。ただし、外部リポジトリや特定実装への依存は持ちません。
+Kadoka Code Atlas adopts the useful responsibility rules from `upd-commander-base-design` without making that repository or its naming conventions a runtime dependency. Normative rules live in `specification/architecture-policy.md`; this document explains their mapping.
 
 ## Layer mapping
 
-### UI Layer
-担当:
-- GUI / CLI / 起動処理
-- ユーザー入力
-- 表示設定
-- 結果表示・保存操作
+### UI
+- GUI / CLI / launch flow
+- user input and display settings
+- result presentation / save intent
 
-UI は解析ロジックを実装せず、Data 層へ直接アクセスしません。
+UI does not implement source analysis and does not directly own Data implementation details.
 
-### Process Layer
-担当:
-- アプリケーション上の処理フロー
-- Analyzer / Generator / Evaluator / Renderer のオーケストレーション
-- Common IR を利用した言語非依存処理
-- 解析結果から次に実行する処理の決定
+### Process
+- application orchestration
+- Analyzer / Generator / Evaluator / Renderer flow
+- language-independent use of Common IR
+- deciding which operation happens next
 
-Process は UI の表示方法や保存先の詳細を知りません。
+Process does not know concrete UI presentation or storage-format details.
 
-### Data Layer
-担当:
-- 解析対象ソース・設定の取得
-- ファイル入出力
-- キャッシュや永続化
-- 外部データアクセス
+### Data
+- target source/config acquisition
+- file I/O, cache, persistence
+- external data access
 
-Data は UI や解析上の業務判断を持ちません。
+Data does not make UI or analysis-domain decisions.
 
 ## Commander
-Commander は「どの処理を次に呼ぶか」を決める薄い交通整理役です。
+Commander answers **what should run next**.
 
-行ってよいこと:
-- 要求を受け取る
-- 適切な Processing / service を選ぶ
-- 必要な層間通信を Messenger に依頼する
-- 結果を次の処理へ渡す
+Allowed:
+- receive a request/result
+- select an appropriate Processing/service
+- ask a Messenger to cross a boundary
+- forward results to the next step
 
-行わないこと:
-- AST 解析
-- graph 計算
-- diagram 生成
-- Mermaid 文字列生成
-- ファイル読み書き
-- 複雑な業務判断
+Not a Commander responsibility:
+- AST parsing
+- graph algorithms
+- diagram generation
+- renderer syntax generation
+- file/database/network I/O
+- substantial calculations/transforms
+
+A loop/calculation/I/O call inside Commander code is therefore a review signal and may be a policy finding.
 
 ## Messenger
-Messenger は隣接層との通信契約を担当します。
+Messenger carries requests/results across an application boundary.
 
-行ってよいこと:
-- command / request / result を送受信する
-- 受信内容を自層 Commander へ渡す
+Allowed:
+- send/receive a boundary message
+- translate only the transport/boundary representation required by the contract
+- forward the received message to its own Commander/application entry
 
-行わないこと:
-- 解析・評価・描画ロジック
-- 呼び出し先 Processing の選定
-- データ変換や保存処理
+Not a Messenger responsibility:
+- choose domain algorithms
+- analyze/evaluate/render
+- persist data
+- perform business decisions
 
-## Dependency rules
-基本経路は次です。
+## Processing
+Real work belongs in Processing/services or the existing focused modules: language adapters, analyzers, generators, renderers, evaluators, and data-access implementations. The project does not need to rename every existing module to `Processing`; responsibility is more important than literal class names.
+
+## Dependency flow
+
+Conceptually:
 
 ```text
 UI <-> Process <-> Data
 ```
 
-原則禁止:
+Disallowed shortcuts include direct UI -> Data implementation access and direct calls into another layer's internal Processing when an application boundary should mediate the interaction.
 
-```text
-UI -> Data
-Data -> UI
-UI Processing -> Process Processing
-Process Processing -> Data Processing
-```
-
-層を越える通信は Messenger または同等の明示的な境界を経由します。
-
-## Existing Kadoka boundaries remain authoritative
-UPD は既存の言語・IR・出力境界を置き換えません。次の規則は併存します。
+Existing Code Atlas pipeline rules remain authoritative:
 
 ```text
 Source
-  -> Language Adapter / Parser
-  -> Common IR
-  -> Analyzer / Generator / Evaluator
-  -> Logical Output
-  -> Renderer
+ -> Language Adapter / Parser
+ -> Common IR / shared models
+ -> Analyzer / Generator / Evaluator
+ -> Logical Output
+ -> Renderer
 ```
 
-- language-specific parser / OSS 型は language adapter 内へ閉じ込める
-- Common IR はデータのみを保持する
-- Analyzer / Generator / Evaluator は可能な限り言語非依存にする
-- Renderer は Mermaid / PlantUML 等の出力形式だけを担当する
+UPD is the application-level boundary around that pipeline; it does not replace language/IR/renderer separation.
 
-UPD は上記パイプラインをアプリケーション全体の UI / Process / Data 境界へ配置するための上位ルールとして扱います。
+## Message contracts
+Cross-boundary messages should be small, explicit, and independent of UI frameworks, database clients, parser-library nodes, or renderer-specific syntax. Prefer stable values/records that can be tested without constructing the framework on the other side.
 
-## Practical mapping example
+Do not pass a WPF/Tk/Godot control, DB connection, Roslyn node, Python `ast` node, etc. through a shared application contract merely for convenience.
 
-```text
-UI Commander
-  -> Process Messenger
-  -> Process Commander
-  -> Language Adapter
-  -> Common IR
-  -> Analyzer / Generator
-  -> Renderer
-  -> Process Commander
-  -> UI Messenger
-  -> UI Processing
-```
+## Error handling
+- Detect/handle errors at the layer that owns the operation.
+- Convert framework/storage/parser-specific errors at the boundary when higher layers should not know those details.
+- Preserve useful cause/context for diagnostics.
+- Do not silently swallow errors just to keep a Commander/Messenger path simple.
+- UI chooses presentation of an error; Process/Data should return domain/application-relevant failure information rather than UI text formatting.
 
-解析対象の読み込みや結果ファイル保存が必要な場合だけ Process から Data Messenger を経由します。
+## Testing model
+- Processing / analyzer / generator logic: direct unit/regression tests.
+- Commander: orchestration tests proving the correct service/message path is selected.
+- Messenger / boundary: contract/integration tests proving request/result transfer without domain logic leakage.
+- Layer/import rules: `python tools/context_tool.py policy-check` for mechanically reliable checks.
+- Semantic ownership: Responsibility Map + targeted architecture review; do not pretend it is fully machine-checkable.
+
+## Policy strength and exceptions
+`specification/architecture-policy.md` separates Required, Recommended, and Advisory rules. Automated checks distinguish confirmed errors from warnings.
+
+A necessary exception is scoped rather than turning the architecture vague. Record the rule, reason, scope, mitigation, and removal/review condition in the relevant Issue/PR.
 
 ## Review checklist
-新しい機能を追加するときは次を確認します。
+- Does UI contain analysis or storage implementation logic?
+- Does Process depend on display formatting or storage format details?
+- Does Data make UI/domain-analysis decisions?
+- Has Commander/Messenger accumulated real processing?
+- Are framework/parser-specific types crossing a stable boundary?
+- Is Common IR/shared model code acquiring feature orchestration/evaluation/rendering behavior?
+- Is a Renderer parsing source or importing a language adapter?
+- Could the changed responsibility still be described as one short entry in `docs/responsibility_map.md`?
 
-- UI が解析・保存ロジックを持っていないか
-- Process が表示形式・保存先の詳細へ依存していないか
-- Data が解析判断や UI 判断を持っていないか
-- Commander / Messenger が肥大化していないか
-- Common IR に処理ロジックが追加されていないか
-- Renderer に解析処理が入り込んでいないか
-
-例外が必要な場合は、理由と影響範囲を Issue / PR に明示します。
+See also:
+- `specification/architecture-policy.md`
+- `docs/responsibility_map.md`
+- `docs/project_operations.md`
