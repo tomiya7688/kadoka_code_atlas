@@ -34,11 +34,17 @@ jobs:
       - name: Check architecture policy
         run: python tools/context_tool.py policy-check
 
-      - name: Smoke context indexes
+      - name: Smoke context indexes and bounded discovery
         run: |
           python tools/context_tool.py profile > /tmp/kca-profile.json
           python tools/context_tool.py structure-index > /tmp/kca-structure.json
           python tools/context_tool.py doc-index > /tmp/kca-doc-index.json
+          python tools/context_tool.py role-map > /tmp/kca-role-map.json
+          python tools/context_tool.py truth-candidates > /tmp/kca-truth.json
+          python tools/context_tool.py search "Common IR" --max-results 5 > /tmp/kca-search.json
+          python tools/context_tool.py path-find "*.py" --max-results 5 > /tmp/kca-paths.json
+          printf 'start\nWARNING sample\ndone\n' > /tmp/kca.log
+          python tools/context_tool.py compact-log /tmp/kca.log > /tmp/kca-compact-log.json
 
       - name: Launch smoke test
         run: python app.py
