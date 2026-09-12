@@ -9,7 +9,8 @@ if errorlevel 1 (
 )
 
 if "%~1"=="" (
-  echo Usage: context.bat ^<profile^|doc-index^|remote-delta^|compact-diff^|structure-index^|validation-plan^|policy-check^|context-pack^> [options]
+  echo Usage: context.bat command [options]
+  echo Run: python tools\context_tool.py --help
   exit /b 2
 )
 
