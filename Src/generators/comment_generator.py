@@ -5,8 +5,8 @@ from __future__ import annotations
 from collections.abc import Mapping
 
 from Src.generators.comment_backend import CommentTextBackend, RuleBasedCommentBackend
-from Src.languages import CSharpAdapter, CppAdapter, GDScriptAdapter, GoAdapter, JavaAdapter, LanguageAdapter
-from Src.languages.python_comments_adapter import PythonAdapter
+from Src.languages.base import LanguageAdapter
+from Src.process.comment_registry import default_comment_adapters
 from Src.models import CommentCandidate
 
 
@@ -19,14 +19,7 @@ class CommentGenerator:
 
     def __init__(self, adapters: Mapping[str, LanguageAdapter] | None = None, backend: CommentTextBackend | None = None) -> None:
         self._backend = backend or RuleBasedCommentBackend()
-        self._adapters = dict(adapters or {
-            "python": PythonAdapter(), "py": PythonAdapter(),
-            "csharp": CSharpAdapter(), "cs": CSharpAdapter(),
-            "gdscript": GDScriptAdapter(), "gd": GDScriptAdapter(),
-            "java": JavaAdapter(),
-            "cpp": CppAdapter(), "cxx": CppAdapter(),
-            "go": GoAdapter(),
-        })
+        self._adapters = dict(adapters or default_comment_adapters())
 
     def supported_languages(self) -> tuple[str, ...]:
         """Return registered comment adapter names in deterministic order."""
