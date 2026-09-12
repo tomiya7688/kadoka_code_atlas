@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 
+from Src.generators.comment_backend import CommentTextBackend, RuleBasedCommentBackend
 from Src.languages import CSharpAdapter, CppAdapter, GDScriptAdapter, GoAdapter, JavaAdapter, LanguageAdapter
 from Src.languages.python_comments_adapter import PythonAdapter
 from Src.models import CommentCandidate
@@ -16,7 +17,8 @@ class UnsupportedLanguageError(ValueError):
 class CommentGenerator:
     """Insert deterministic comment candidates while preserving source statements."""
 
-    def __init__(self, adapters: Mapping[str, LanguageAdapter] | None = None) -> None:
+    def __init__(self, adapters: Mapping[str, LanguageAdapter] | None = None, backend: CommentTextBackend | None = None) -> None:
+        self._backend = backend or RuleBasedCommentBackend()
         self._adapters = dict(adapters or {
             "python": PythonAdapter(), "py": PythonAdapter(),
             "csharp": CSharpAdapter(), "cs": CSharpAdapter(),
@@ -42,7 +44,8 @@ class CommentGenerator:
         lines = source.splitlines(keepends=True)
         newline = "\r\n" if "\r\n" in source else "\n"
         for candidate in reversed(candidates):
-            lines.insert(candidate.line - 1, f"{candidate.indent}{candidate.text}{newline}")
+            text = self._backend.generate(candidate)
+            lines.insert(candidate.line - 1, f"{candidate.indent}{text}{newline}")
         return "".join(lines)
 
     def _adapter(self, language: str) -> LanguageAdapter:
