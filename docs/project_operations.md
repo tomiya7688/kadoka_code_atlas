@@ -5,6 +5,10 @@ Kadoka Code Atlas uses GitHub Issues as the task ledger and defaults to `1 Issue
 ## Standard flow
 ## Remote latest first
 
+### Build verification
+
+`verify_build.bat` builds the wheel, source archive, and EXE, then runs both CLI outputs and static/test checks.
+
 作業開始時は、リモートの最新状態を確認してから Issue の実装に入る。
 
 ```powershell
