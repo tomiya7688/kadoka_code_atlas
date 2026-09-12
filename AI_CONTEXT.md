@@ -1,51 +1,102 @@
 # AI Context
 
-Kadoka Code Atlas で AI が最初に読む小さい索引です。詳細仕様は複製しません。
+Kadoka Code Atlas で AI が最初に読む小さい索引です。詳細仕様や履歴はここへ複製しません。
 
 ## Source of Truth
-- Current task: GitHub Issue。`.codex/next_issue.md` があればその1件を優先する。
-- Overview: `README.md`
-- AI / coding rules: `AGENTS.md`
-- Architecture: `docs/architecture/upd_commander.md`
+- Current task / priority / unfinished work: GitHub Issues. `.codex/next_issue.md` があればその1件を優先する。
+- Implemented behavior: `Src/`, `tools/`, `tests/`
+- Normative project rules: `specification/architecture-policy.md`
+- Current capability / blocker snapshot: `docs/current_state.md`
+- Responsibility routing: `docs/responsibility_map.md`
+- Architecture explanation: `docs/architecture/upd_commander.md`
 - Feature specs: `docs/specs/`
-- Operations: `docs/project_operations.md`
-- Source / tests: `Src/`, `tools/`, `tests/`
+- Project operations: `docs/project_operations.md`
+- Human overview: `README.md`
+
+Generated `.codex/` packets, indexes, diagrams, reports, and summaries are derived indexes, not source of truth.
 
 ## Read First
 1. `AI_CONTEXT.md`
 2. `.codex/next_issue.md`（存在する場合）
-3. `AGENTS.md`
-4. 指定された関連 spec
-5. 変更対象 source と対応 test
+3. `docs/responsibility_map.md`
+4. current task に適用される `specification/` / feature spec
+5. target source + matching tests
 
-## Working Rules
-- Goal / Required / Acceptance が揃ったら追加探索を止める。
-- Search first, read second。
-- unrelated refactor を混ぜない。
-- 全 docs / 全 Issues / full diff を無条件に読まない。
-- 要約で不足する場合だけ原典へ戻る。
-- 正確性をコンテキスト削減量より優先する。
+`AGENTS.md` contains stable agent-facing project rules; read it when the runtime does not already inject it or when a task touches architecture/workflow policy.
+
+## Exploration Stop
+Broad exploration を止める条件:
+- Goal が分かる
+- Required constraints が分かる
+- Acceptance が分かる
+- target source / tests / direct dependencies の working set が分かる
+- 必要なら Out of Scope / Deferred が分かる
+
+十分なら実装へ進み、不明点が発生したときだけ追加探索する。
+
+## Context Priority
+- P0: current task / Required / Acceptance
+- P1: target source / matching tests
+- P2: direct dependencies / active architecture rules
+- P3: detailed references
+- P4: history / unrelated Issues / generated artifacts
 
 ## Routing
 - language adapter -> `Src/languages/`
+- shared models / IR -> `Src/analyzers/`, `Src/models/`
 - analysis -> `Src/analyzers/`
 - logical generation -> `Src/generators/`
 - output formatting -> `Src/renderers/`
 - design evaluation -> `Src/evaluators/`
-- issue / PR workflow -> `tools/`, `*.bat`
+- Issue/PR/context workflow -> `tools/`, root `*.bat` / `*.sh`
+- architecture rule -> `specification/architecture-policy.md`
+
+Use `docs/responsibility_map.md` before broad file discovery.
 
 ## Architecture Constraints
-- Common IR はデータのみを持つ。
-- 言語固有 AST は language 境界から上へ漏らさない。
-- Renderer に解析ロジックを持たせない。
-- UI / Process / Data の層越えアクセスを避ける。
-- Commander は呼び出しの交通整理のみ、Messenger は層間通信のみを担当する。
+- Language-specific AST / parser types stay behind language adapters.
+- Common models / IR remain language-neutral; feature orchestration belongs elsewhere.
+- Analyzer / Generator / Evaluator do not emit renderer syntax directly.
+- Renderer does not parse source languages.
+- UI / Process / Data responsibilities remain separated.
+- Commander routes work; Messenger crosses boundaries; neither owns real processing.
+- Confirmed architecture violations and review warnings must be distinguished.
+
+## Working Rules
+- Search first, read second.
+- unrelated refactor を混ぜない。
+- all docs / all Issues / repo history / full diff / full logs を無条件に読まない。
+- changed files の次は changed symbols / direct dependencies へ絞る。
+- summaries/indexes で不足する場合だけ原典へ戻る。
+- deterministic analysis を LLM inference より優先できる箇所では優先する。
+- remote競合があり得る場合は compact remote delta を先に確認する。
+- generated / build / cache / large log は対象そのものが必要な場合だけ読む。
+- 正確性をコンテキスト削減量より優先する。
 
 ## Validation
-変更に必要な targeted tests を先に行い、PR 前は全体 `pytest` を実行する。実行できなかった検証は Unverified として明示する。
+- change type に応じた smallest sufficient evidence を最初に選ぶ。
+- `0 tests` / empty scan / unrelated smoke は成功根拠にしない。
+- architecture-sensitive changes: `context.bat policy-check`
+- tooling changes: targeted project-operation tests
+- UI/visual acceptance: headless checks first, visual correctness がAcceptanceなら実画面確認も必要
+- package/distribution changes: source checks + artifact/build smoke
+- 実行できない範囲は `Unverified` として明示する。
 
 ## Low-context Commands
-- `next_issue.bat`: 最優先 Issue を1件だけ `.codex/next_issue.md` にする。
-- `pull_request.bat`: pytest -> commit -> compact diff summary -> push -> PR。
+Windows:
+- `next_issue.bat` — priority-first Task Capsuleを `.codex/next_issue.md` へ生成
+- `context.bat profile` — repo規模 / context budget / hotspot候補
+- `context.bat doc-index` — Markdown heading index
+- `context.bat remote-delta` — ahead/behind/remote commits/files/bounded diff
+- `context.bat compact-diff` — changed files / shortstat / commit subjects
+- `context.bat structure-index` — Python symbols/importsの構造索引
+- `context.bat validation-plan` — changed filesから検証をルーティング
+- `context.bat policy-check` — compact architecture / UPD policy check
+- `context.bat context-pack` — 一時 Context Packを `.codex/context_pack.md` へ生成
+- `pull_request.bat` — validation -> compact summary -> push -> PR
 
-`ai-context-reducer` と `upd-commander-base-design` は設計参考元であり、実行時必須依存ではありません。
+Linux/macOSでは `./context.sh <command>` を使用する。
+
+Safe remote update は `remote-delta --ff` を明示した場合のみ許可し、dirty/diverged state では停止する。
+
+`ai-context-reducer` と `upd-commander-base-design` は設計参考元であり、Kadoka Code Atlas の実行時必須依存ではありません。
