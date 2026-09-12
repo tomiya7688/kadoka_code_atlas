@@ -26,6 +26,10 @@ class CommentGenerator:
             "go": GoAdapter(),
         })
 
+    def supported_languages(self) -> tuple[str, ...]:
+        """Return registered comment adapter names in deterministic order."""
+        return tuple(sorted(self._adapters))
+
     def candidates(self, source: str, language: str) -> tuple[CommentCandidate, ...]:
         """Return suggestions only; this method never mutates source text."""
         return self._adapter(language).parse(source).candidates
