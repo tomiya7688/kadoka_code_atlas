@@ -1,255 +1,135 @@
 # Kadoka Code Atlas
 
-Kadoka Code Atlas は、ソースコードを解析し、コードベースの構造・振る舞い・依存関係・責務を可視化するためのツール群です。
+Kadoka Code Atlas は、ソースコードの構造・振る舞い・依存関係・責務を解析し、図表・コメント・設計評価として可視化するためのツール群です。
 
-単に図を生成するだけではなく、コード全体を「地図」として眺められるようにし、設計上の偏りや複雑さを発見しやすくすることを目的としています。
+目的は、コードを読む前に「何があるか」「どこから呼ばれるか」「何に依存するか」「どこが複雑か」を短時間で把握できる状態を作ることです。
 
-## 目的
+## Main capabilities
 
-- 大規模なコードベースでも全体像を把握しやすくする
-- クラス・関数・モジュール間の関係を自動解析する
-- UML や各種グラフを Mermaid 形式で生成する
-- ソースコードに対するコメント生成を補助する
-- 生成された図や解析結果から設計上の問題を見つける
-- 言語ごとの解析処理と、図表生成処理を可能な限り分離する
+主な対象:
+- コメント生成
+- クラス / オブジェクト / シーケンス / コミュニケーション図
+- 状態遷移 / アクティビティ / タイミング / ユースケース図
+- パッケージ / コンポーネント / デプロイメント図
+- コールグラフ
+- クラス責務表
+- CI 解析
+- 設計評価
 
-## 対応予定言語
+図表の標準出力は Mermaid とし、PlantUML 等は Renderer の差し替えで追加できる構造を目指します。コメント生成は基本的に元ソースへ追記します。
 
-初期対応予定:
+## Analysis targets
 
+主要な解析対象言語:
 - Python
 - GDScript
 - C#
+- C++
 - Java
+- Go
 
-追加候補:
+最初の解析実装対象は Python です。言語固有処理は境界へ閉じ込め、中央の解析・生成・評価処理は可能な限り言語非依存にします。
 
-- Ruby
-- C
-
-## 主な生成・解析機能
-
-### コメント生成機
-
-ソースコードを解析し、必要に応じてコメントをコードへ直接追加します。
-
-図表系とは異なり、出力先は基本的に元のソースコードです。
-
-### クラス図生成機
-
-クラス間の関係を解析して Mermaid のクラス図を生成します。
-
-基本的には「呼ぶ側」を基準に図を分割します。
-
-一方で、ログ、エラー処理、評価、画面関連クラスなど、多数のクラスから参照されるクラスについては、そのクラスを中心とした「呼ばれる側」基準の図として分離することを想定しています。
-
-Public / Private など、表示する要素は切り替え可能にする予定です。
-
-### オブジェクト図生成機
-
-クラス図に近い情報を利用しつつ、オブジェクト単位の関係を可視化します。
-
-### シーケンス図生成機
-
-メソッドやクラス間の呼び出し順序を解析し、処理の流れを可視化します。
-
-クラス図と同様に呼び出し関係を基礎データとして利用します。
-
-### コミュニケーション図生成機
-
-オブジェクト・クラス間の通信関係を可視化します。
-
-静的解析との相性が比較的良く、人間がコード全体の関係を把握する用途を重視します。
-
-### 状態遷移図生成機
-
-状態と、その遷移条件を抽出して状態遷移図を生成します。
-
-### アクティビティ図生成機
-
-処理フローを解析してアクティビティ図を生成します。
-
-静的解析だけでは確定しにくい実行時情報もあるため、必要に応じて動的解析との組み合わせを検討します。
-
-### タイミングチャート生成機
-
-主要なタイミング情報を抽出してタイミングチャートを生成します。
-
-### ユースケース図生成機
-
-GUI や入力コンポーネントなどを解析し、利用者から見たユースケースを可視化します。
-
-この機能は実際の入力・画面構成の理解が必要になるため、比較的動的解析寄りの機能として扱う予定です。
-
-### パッケージ図生成機
-
-パッケージ、モジュール、名前空間などの関係を解析して可視化します。
-
-### コンポーネント図生成機
-
-コードベース内の主要コンポーネントと、それらの依存関係を可視化します。
-
-### デプロイメント図生成機
-
-アプリケーションの配置情報や実行環境の構成を可視化します。
-
-### コールグラフ生成機
-
-関数・メソッド単位の呼び出し関係を生成します。
-
-「誰を呼ぶか」と「誰から呼ばれるか」の両方向から追える構造を想定しています。
-
-クラス図、シーケンス図、コミュニケーション図、設計評価など、多くの機能の基礎データになります。
-
-### クラス責務表生成機
-
-クラスと、そのクラスが持つ責務を表形式で出力します。
-
-例:
+## Core architecture
 
 ```text
-クラス,責務;
-Kadoka,かどかのパラメーターを保有するクラス
+Source
+  -> Language Adapter / Parser
+  -> Common IR / shared models
+  -> Analyzer / Generator / Evaluator
+  -> Logical Output
+  -> Renderer
+  -> Mermaid / PlantUML / text / table
 ```
 
-必要に応じて CSV など機械処理しやすい形式への出力も想定しています。
+アプリケーション全体は UPD Commander Base Design を参考に UI / Process / Data の責務を分けます。Commander は呼び出しの交通整理、Messenger は境界通信のみを担当し、実処理を持ちません。
 
-## 追加予定の解析機能
+規定は [`specification/architecture-policy.md`](specification/architecture-policy.md)、説明は [`docs/architecture/upd_commander.md`](docs/architecture/upd_commander.md) を参照してください。
 
-### 依存関係図
-
-ファイル、モジュール、パッケージ、名前空間、アセンブリなどの依存関係を可視化します。
-
-循環依存の検出にも利用します。
-
-### データフロー解析
-
-値が入力されてから加工・保存・出力されるまでの流れを追跡します。
-
-### 例外・エラーフロー解析
-
-`throw` / `raise` された例外が、どこで捕捉され、どこまで伝播するかを追跡します。
-
-### イベント・シグナル接続図
-
-以下のような、通常の関数呼び出しだけでは追いにくい接続関係を可視化します。
-
-- Godot Signal
-- C# event / delegate
-- GUI callback
-- その他イベント駆動型の接続
-
-### API / エンドポイント図
-
-Web API などについて、Route → Controller → Service → Repository のような経路を可視化します。
-
-### デッドコード・孤立要素検出
-
-以下のような要素を検出します。
-
-- どこからも参照されないクラス
-- 到達不能なメソッド
-- 接続されていない Signal / Event
-- 参照されないファイル
-- 孤立したモジュール
-
-### 差分解析
-
-Git 差分などを利用し、変更前後で構造がどのように変化したかを可視化します。
-
-例:
-
-- 新しい依存関係が追加された
-- 呼び出し経路が変わった
-- クラス図の関係が変わった
-- シーケンスが変化した
-
-## 設計評価
-
-Kadoka Code Atlas では、生成された図そのものも設計評価の材料として扱います。
-
-コードの設計が複雑になると、依存関係図やクラス図、シーケンス図などにも複雑さが現れます。
-
-そのため、将来的には以下のような指標を横断的に評価する予定です。
-
-- 循環依存
-- God Class
-- 過大な Fan-in / Fan-out
-- 深すぎる継承
-- 巨大なシーケンス
-- 責務の集中
-- 過度な結合
-- 孤立した要素
-
-「生成される図が読みにくい」という結果自体を、設計上の問題を発見するヒントとして利用します。
-
-## 出力形式
-
-基本方針:
-
-- コメント生成機: 元のソースコードへ直接追記
-- 図表生成機: Mermaid
-- 表形式データ: CSV / テキストなどを検討
-
-Mermaid を基本形式とすることで、GitHub 上でそのまま確認しやすく、生成結果をバージョン管理しやすい構成を目指します。
-
-## アーキテクチャ方針
-
-各生成機が個別にソースコードを解析するのではなく、可能な限り共通の解析基盤を利用します。
-
-想定構成:
+## Repository structure
 
 ```text
-Source Code
-    ↓
-Language Parser / AST Analyzer
-    ↓
-Common Intermediate Representation
-    ↓
-Relationship / Flow Analysis
-    ↓
-Generator
-    ├─ Class Diagram
-    ├─ Sequence Diagram
-    ├─ Call Graph
-    ├─ Responsibility Table
-    ├─ Dependency Graph
-    └─ Design Evaluation
+Src/
+  analyzers/       # deterministic relationship / graph analysis
+  models/          # shared passive data contracts
+  generators/      # logical output generation
+  renderers/       # Mermaid / text / other formatting
+  evaluators/      # design / code-quality evaluation
+  languages/       # language-specific adapters
+tests/             # automated evidence
+tools/             # Issue / PR / context helpers
+docs/              # explanations, current state, routing, feature specs
+specification/     # normative project rules
+app.py             # application entry point
 ```
 
-特に AST、シンボル、参照関係、呼び出し関係などの解析結果は共通化し、複数の生成機から再利用できる構造を目指します。
+現在の能力・既知制約は [`docs/current_state.md`](docs/current_state.md)、責務からファイルを探す場合は [`docs/responsibility_map.md`](docs/responsibility_map.md) を参照してください。
 
-## ディレクトリ構成案
+## Project operations
+
+GitHub Issue をタスク台帳として扱い、原則 `1 Issue ~= 1 PR` です。
+
+作業開始の推奨入口:
 
 ```text
-kadoka_code_atlas/
-├─ analyzers/      # AST・参照・呼び出し・依存関係などの解析
-├─ languages/      # Python / GDScript / C# / Java など言語固有処理
-├─ models/         # 共通中間表現
-├─ generators/     # 図・表・コメントなどの生成
-├─ renderers/      # Mermaid / CSV などの出力処理
-├─ evaluators/     # 設計評価
-├─ cli/            # CLI
-├─ tests/
-└─ README.md
+prepare_work.bat
 ```
 
-構成は実装の進行に応じて変更される可能性があります。
+Linux/macOS:
 
-## 方針
+```text
+./prepare_work.sh
+```
 
-Kadoka Code Atlas は、単一の巨大な解析機を作るのではなく、解析結果を共有しながら多数の小さな生成・評価機能を組み合わせる構成を目指します。
+これは次を行います。
 
-最終的には、コードを読む前に Kadoka Code Atlas を通すことで、
+```text
+priority-first Issue selection
+  -> Task Capsule
+  -> Remote Delta First
+  -> Context Pack
+```
 
-- 何があるのか
-- どこから呼ばれているのか
-- 何に依存しているのか
-- どのように処理が流れるのか
-- どこが複雑なのか
+個別コマンド:
+- `next_issue.bat` — 最優先の actionable Issue を1件だけTask Capsule化
+- `context.bat profile` — repo規模 / context budget / hotspot候補
+- `context.bat doc-index` — docsの見出し索引
+- `context.bat remote-delta` — ahead/behind / remote commits / changed files / bounded diff
+- `context.bat compact-diff` — changed files / shortstat / commit summary
+- `context.bat structure-index` — Python symbol/import index
+- `context.bat validation-plan` — changed filesから検証をルーティング
+- `context.bat policy-check` — architecture / UPD boundary のcompact check
+- `context.bat context-pack` — 一時作業Context Pack生成
+- `pull_request.bat` — validation / commit / compact summary / push / PR
 
-を素早く把握できる状態を目標とします。
+Linux/macOSでは `./context.sh <command>` を使用できます。
+
+詳細は [`docs/project_operations.md`](docs/project_operations.md) を参照してください。
+
+## AI context policy
+
+- Search first, read second
+- Goal / Required / Acceptance / working set が揃ったら探索を止める
+- Responsibility Map / structure index から対象を絞る
+- remote更新はfull rereadよりcompact deltaを先に見る
+- full diff / full logs / all docs / all Issues を通常コンテキストへ入れない
+- generated Context Pack / index は原典の代替にしない
+- unrelated refactor を混ぜない
+- 検証できなかった範囲は `Unverified` とする
+- 正確性をコンテキスト削減量より優先する
+
+AI向け入口は `AI_CONTEXT.md` と `AGENTS.md` です。
+
+## Specifications
+
+README は概要だけを保持します。個別機能の要件・Acceptance Criteria は `docs/specs/` と GitHub Issues、横断的な必須規則は `specification/` を Source of Truth とします。
+
+`ai-context-reducer` と `upd-commander-base-design` は設計・運用の参考元であり、実行時必須依存ではありません。
+
+## License
+
+MIT License
 
 ## Status
 
-現在は構想・初期設計段階です。
+初期実装・アーキテクチャ整備中です。
