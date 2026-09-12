@@ -26,10 +26,19 @@ jobs:
           python -m pip install --upgrade pip build
           python -m pip install -e ".[test]"
 
-      - name: Run issue-routing tests
+      - name: Run project-operation tests
         # Full pytest is tracked by #23 because pre-existing comment-generator tests
         # currently fail during collection on main.
-        run: python -m pytest tests/test_next_issue.py
+        run: python -m pytest tests/test_next_issue.py tests/test_context_tool.py
+
+      - name: Check architecture policy
+        run: python tools/context_tool.py policy-check
+
+      - name: Smoke context indexes
+        run: |
+          python tools/context_tool.py profile > /tmp/kca-profile.json
+          python tools/context_tool.py structure-index > /tmp/kca-structure.json
+          python tools/context_tool.py doc-index > /tmp/kca-doc-index.json
 
       - name: Launch smoke test
         run: python app.py
