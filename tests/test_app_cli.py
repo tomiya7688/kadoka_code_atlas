@@ -15,3 +15,10 @@ def test_comment_cli_in_place():
         source.write_text("def load_config():\n    return {}\n", encoding="utf-8")
         assert main(["comment", str(source), "--in-place"]) == 0
         assert "# Retrieves config." in source.read_text(encoding="utf-8")
+
+def test_ci_cli_writes_mermaid_output_file():
+    with TemporaryDirectory() as folder:
+        source=Path(folder)/"build.yml"; output=Path(folder)/"ci.mmd"
+        source.write_text("""jobs:\n  test:\n    steps:\n      - name: pytest\n        run: pytest\n""", encoding="utf-8")
+        assert main(["ci", str(source), "--output", str(output)]) == 0
+        assert "ci_test" in output.read_text(encoding="utf-8")
