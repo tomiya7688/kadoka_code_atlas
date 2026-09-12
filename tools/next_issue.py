@@ -16,7 +16,8 @@ from pathlib import Path
 REPO = "tomiya7688/kadoka_code_atlas"
 OUTPUT = Path(".codex") / "next_issue.md"
 
-# Lower number wins. Both common P-labels and readable labels are supported.
+# Lower number wins. Explicit labels are authoritative; existing title prefixes are a
+# fallback so repositories do not need a label migration before the workflow is useful.
 PRIORITY_LABELS = {
     "p0": 0,
     "priority:p0": 0,
@@ -35,6 +36,7 @@ PRIORITY_LABELS = {
     "priority:low": 3,
     "low priority": 3,
 }
+TITLE_PRIORITY_RE = re.compile(r"^\s*\[P([0-3])\]", re.IGNORECASE)
 
 # Issue labels can point Codex at exactly one relevant specification.
 # Multiple spec:* labels are supported when an issue intentionally spans features.
@@ -93,7 +95,13 @@ def priority(issue: dict) -> tuple[int, int]:
         label.get("name", "").strip().lower()
         for label in issue.get("labels", [])
     }
-    rank = min((PRIORITY_LABELS[name] for name in labels if name in PRIORITY_LABELS), default=50)
+    label_ranks = [PRIORITY_LABELS[name] for name in labels if name in PRIORITY_LABELS]
+
+    if label_ranks:
+        rank = min(label_ranks)
+    else:
+        title_match = TITLE_PRIORITY_RE.match(issue.get("title", ""))
+        rank = int(title_match.group(1)) if title_match else 50
 
     # Within the same priority, older issue number wins. This keeps ordering stable and
     # avoids silently changing priorities based on wording or LLM interpretation.
@@ -168,6 +176,7 @@ def main() -> int:
         summary,
         "",
         "## Required context",
+        "- AI_CONTEXT.md",
         "- AGENTS.md",
     ]
 
@@ -181,8 +190,9 @@ def main() -> int:
             "",
             "## Codex instruction",
             "Implement or resolve this issue as the current highest-priority task.",
-            "Read only the files listed under Required context before inspecting implementation files needed for the change.",
-            "Do not load unrelated docs/specs files.",
+            "Read AI_CONTEXT.md first, then only the files listed under Required context before inspecting implementation files needed for the change.",
+            "Stop broad exploration once Goal / Required / Acceptance and the working set are sufficient.",
+            "Do not load unrelated docs/specs/issues or the full diff by default.",
             "Inspect the existing implementation before changing it.",
             "Keep changes scoped to this issue and run the relevant checks after editing.",
             "",
