@@ -6,14 +6,11 @@ Kadoka Code Atlas は、ソースコードの構造・振る舞い・依存関�
 
 ## Main capabilities
 
-主な対象は次の通りです。
-
+主な対象:
 - コメント生成
-- クラス図 / オブジェクト図
-- シーケンス図 / コミュニケーション図
-- 状態遷移図 / アクティビティ図 / タイミングチャート
-- ユースケース図
-- パッケージ図 / コンポーネント図 / デプロイメント図
+- クラス / オブジェクト / シーケンス / コミュニケーション図
+- 状態遷移 / アクティビティ / タイミング / ユースケース図
+- パッケージ / コンポーネント / デプロイメント図
 - コールグラフ
 - クラス責務表
 - CI 解析
@@ -24,7 +21,6 @@ Kadoka Code Atlas は、ソースコードの構造・振る舞い・依存関�
 ## Analysis targets
 
 主要な解析対象言語:
-
 - Python
 - GDScript
 - C#
@@ -39,89 +35,96 @@ Kadoka Code Atlas は、ソースコードの構造・振る舞い・依存関�
 ```text
 Source
   -> Language Adapter / Parser
-  -> Common IR
+  -> Common IR / shared models
   -> Analyzer / Generator / Evaluator
   -> Logical Output
   -> Renderer
   -> Mermaid / PlantUML / text / table
 ```
 
-基本ルール:
+アプリケーション全体は UPD Commander Base Design を参考に UI / Process / Data の責務を分けます。Commander は呼び出しの交通整理、Messenger は境界通信のみを担当し、実処理を持ちません。
 
-- 言語固有 parser / AST / OSS 型は `Src/languages/` の外へ漏らさない
-- Common IR はデータのみを保持する
-- Analyzer / Generator / Evaluator は言語固有 AST へ直接依存しない
-- Renderer は出力形式を担当し、解析ロジックを持たない
-- 解析結果は複数の図・表・評価機能で再利用する
-
-アプリケーション全体の責務分離には UPD Commander Base Design の UI / Process / Data 境界を採用します。
-
-- UI: 入力・表示・ユーザー向け起動フロー
-- Process: 解析・生成・評価のオーケストレーション
-- Data: source / config / file / external data access
-
-Commander は呼び出しの交通整理のみ、Messenger は層間通信のみを担当します。詳細は [`docs/architecture/upd_commander.md`](docs/architecture/upd_commander.md) を参照してください。
+規定は [`specification/architecture-policy.md`](specification/architecture-policy.md)、説明は [`docs/architecture/upd_commander.md`](docs/architecture/upd_commander.md) を参照してください。
 
 ## Repository structure
 
 ```text
 Src/
-  analyzers/      # static / deterministic analysis
-  generators/     # logical output generation
-  renderers/      # Mermaid / text / other formatting
-  evaluators/     # design / code quality evaluation
-  languages/      # language-specific adapters
-
-tests/            # automated tests
-tools/            # project-operation helpers
-docs/specs/       # feature specifications
-docs/architecture/# architecture rules
+  analyzers/       # deterministic relationship / graph analysis
+  models/          # shared passive data contracts
+  generators/      # logical output generation
+  renderers/       # Mermaid / text / other formatting
+  evaluators/      # design / code-quality evaluation
+  languages/       # language-specific adapters
+tests/             # automated evidence
+tools/             # Issue / PR / context helpers
+docs/              # explanations, current state, routing, feature specs
+specification/     # normative project rules
 app.py             # application entry point
-run.bat            # Windows launcher
 ```
+
+現在の能力・既知制約は [`docs/current_state.md`](docs/current_state.md)、責務からファイルを探す場合は [`docs/responsibility_map.md`](docs/responsibility_map.md) を参照してください。
 
 ## Project operations
 
-設計・機能追加・修正・評価は GitHub Issue をタスク台帳として管理し、原則 `1 Issue ~= 1 PR` で進めます。
+GitHub Issue をタスク台帳として扱い、原則 `1 Issue ~= 1 PR` です。
 
-低コンテキスト運用の標準フロー:
+作業開始の推奨入口:
 
 ```text
-Issue
-  -> next_issue.bat
-  -> one compact current-task context
-  -> scoped implementation
-  -> targeted validation
-  -> pull_request.bat
-  -> pytest
-  -> compact diff summary
-  -> PR
+prepare_work.bat
 ```
 
-- `next_issue.bat`: 最優先 Issue を1件だけ選び `.codex/next_issue.md` を生成
-- `pull_request.bat`: pytest、commit、changed-file / diff-stat ベースの要約、push、PR作成
-- `AI_CONTEXT.md`: AI が最初に読む小さい routing index
+Linux/macOS:
+
+```text
+./prepare_work.sh
+```
+
+これは次を行います。
+
+```text
+priority-first Issue selection
+  -> Task Capsule
+  -> Remote Delta First
+  -> Context Pack
+```
+
+個別コマンド:
+- `next_issue.bat` — 最優先の actionable Issue を1件だけTask Capsule化
+- `context.bat profile` — repo規模 / context budget / hotspot候補
+- `context.bat doc-index` — docsの見出し索引
+- `context.bat remote-delta` — ahead/behind / remote commits / changed files / bounded diff
+- `context.bat compact-diff` — changed files / shortstat / commit summary
+- `context.bat structure-index` — Python symbol/import index
+- `context.bat validation-plan` — changed filesから検証をルーティング
+- `context.bat policy-check` — architecture / UPD boundary のcompact check
+- `context.bat context-pack` — 一時作業Context Pack生成
+- `pull_request.bat` — validation / commit / compact summary / push / PR
+
+Linux/macOSでは `./context.sh <command>` を使用できます。
 
 詳細は [`docs/project_operations.md`](docs/project_operations.md) を参照してください。
 
 ## AI context policy
 
-AI に repository 全体を無条件で読ませるのではなく、Issue・routing・検索で必要情報を先に絞ります。
-
 - Search first, read second
-- Goal / Required / Acceptance が揃ったら探索を止める
+- Goal / Required / Acceptance / working set が揃ったら探索を止める
+- Responsibility Map / structure index から対象を絞る
+- remote更新はfull rereadよりcompact deltaを先に見る
+- full diff / full logs / all docs / all Issues を通常コンテキストへ入れない
+- generated Context Pack / index は原典の代替にしない
 - unrelated refactor を混ぜない
-- full diff / large logs / all docs / all Issues を通常コンテキストへ入れない
-- 要約は索引として扱い、不足時だけ原典へ戻る
+- 検証できなかった範囲は `Unverified` とする
 - 正確性をコンテキスト削減量より優先する
 
-この方針は `ai-context-reducer` を参考に Kadoka Code Atlas 向けへ適応しています。外部リポジトリは実行時必須依存ではありません。
+AI向け入口は `AI_CONTEXT.md` と `AGENTS.md` です。
 
 ## Specifications
 
-README は概要だけを保持します。個別機能の要件・Acceptance Criteria は `docs/specs/` と GitHub Issues を Source of Truth とします。
+README は概要だけを保持します。個別機能の要件・Acceptance Criteria は `docs/specs/` と GitHub Issues、横断的な必須規則は `specification/` を Source of Truth とします。
 
-AI / Codex 向け入口は `AI_CONTEXT.md` と `AGENTS.md` です。
+`ai-context-reducer` と `upd-commander-base-design` は設計・運用の参考元であり、実行時必須依存ではありません。
 
 ## License
 
