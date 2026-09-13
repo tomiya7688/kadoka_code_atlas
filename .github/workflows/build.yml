@@ -47,10 +47,14 @@ jobs:
       - name: Launch smoke test
         run: python app.py
 
-      - name: Self-analysis smoke summary`r`n        run: python tools/self_analysis.py . > self-analysis-summary.json`r`n`r`n      - name: Build package
+      - name: Self-analysis smoke summary
+        run: python tools/self_analysis.py . > self-analysis-summary.json
+
+      - name: Build package
         run: python -m build
 
       - name: Verify installed wheel artifact
         run: python tools/verify_wheel.py dist/*.whl
+
 
 
