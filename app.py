@@ -3,10 +3,8 @@ from __future__ import annotations
 import argparse
 import sys
 from pathlib import Path
-from Src.analyzers.ci import parse_github_actions
-from Src.evaluators import evaluate_ci
-from Src.generators import CommentGenerator
-from Src.renderers import render_ci_workflow
+from Src.process.application import ApplicationService, CIRequest, CommentRequest
+from Src.data.files import write_text
 PROJECT_NAME = "Kadoka Code Atlas"
 
 def main(argv: list[str] | None = None) -> int:
@@ -25,31 +23,28 @@ def main(argv: list[str] | None = None) -> int:
     if args.command not in {"comment", "ci"}:
         print(PROJECT_NAME)
         return 0
+    service = ApplicationService()
     if args.command == "ci":
-        path = Path(args.source)
-        workflow = parse_github_actions(path.read_text(encoding="utf-8"))
-        result = render_ci_workflow(workflow)
+        result = service.analyze_ci(CIRequest(Path(args.source)))
         if args.output:
-            Path(args.output).write_text(result, encoding="utf-8")
+            write_text(Path(args.output), result.content)
         else:
-            print(result, end="")
+            print(result.content, end="")
         if args.check:
-            findings = evaluate_ci(workflow)
-            for finding in findings:
+            for finding in result.findings:
                 print(f"{finding.severity}: {finding.code}: {finding.message}", file=sys.stderr)
-            return 1 if any(finding.severity == "error" for finding in findings) else 0
+            return 1 if any(finding.severity == "error" for finding in result.findings) else 0
         return 0
     if args.output and args.in_place:
         parser.error("--output and --in-place cannot be combined")
     path = Path(args.source)
-    source = path.read_text(encoding="utf-8")
-    result = CommentGenerator().generate(source, args.language or path.suffix)
+    result = service.generate_comments(CommentRequest(path, args.language or path.suffix))
     if args.in_place:
-        path.write_text(result, encoding="utf-8")
+        write_text(path, result.content)
     elif args.output:
-        Path(args.output).write_text(result, encoding="utf-8")
+        write_text(Path(args.output), result.content)
     else:
-        print(result, end="")
+        print(result.content, end="")
     return 0
 
 if __name__ == "__main__":
