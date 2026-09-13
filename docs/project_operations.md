@@ -146,3 +146,7 @@ Main commands:
 The project adopts the applicable high-value methods from `ai-context-reducer` and UPD policy practice: compact AI entrypoint, Current State, Task Capsule/Context Pack, Search-first/Read-second, bounded search/path discovery, exploration stop conditions, explicit Out of Scope, priority-first actionable Issue selection, Task/Change Routing, Responsibility Map, file-role and source-of-truth indexing, Source Structure Index, context profile/budget/hotspots, Remote Delta First, compact diff/log handling, Validation Routing, Policy Routing/rule strength/scoped exceptions, deterministic-first structural analysis, generated/noisy-data exclusion, compact handoff reporting, and clear information responsibilities.
 
 We do not maintain a second permanent full-repository analysis framework or an always-on giant call-graph cache. Code Atlas itself should become the richer structure-index provider as its shared analysis matures.
+
+### UPD Commander Checker
+
+The CI and development workflow installs the Python UPD Commander Checker from the upstream repository at the pinned commit in `tools/requirements-upd.txt`, then runs `upd-commander-check .`. This generic UI/Process/Data check complements the Kadoka-specific `context.bat policy-check`; the checker is development-only and is not included in runtime or distribution dependencies.
