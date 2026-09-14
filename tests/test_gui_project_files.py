@@ -1,7 +1,7 @@
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
-from Src.ui.project_files import detect_language, discover_supported_files
+from Src.data.project_files import detect_language, discover_supported_files
 
 
 def test_detect_language_for_primary_targets():
