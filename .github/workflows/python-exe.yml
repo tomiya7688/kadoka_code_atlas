@@ -34,7 +34,7 @@ jobs:
       - name: Smoke test EXE
         shell: powershell
         run: |
-          $output = & .\dist\kadoka-code-atlas.exe
+          $output = & .\dist\kadoka-code-atlas.exe --version
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           if ($output -notmatch "Kadoka Code Atlas") {
             Write-Error "Unexpected EXE output: $output"
