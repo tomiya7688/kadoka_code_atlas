@@ -41,6 +41,29 @@ def test_application_service_generates_responsibility_markdown():
         assert "ConfigStore" in result.content
 
 
+def test_application_service_generates_and_saves_partitioned_class_diagrams():
+    with TemporaryDirectory() as folder:
+        root = Path(folder)
+        source = root / "sample.py"
+        source.write_text(
+            "class Helper: pass\nclass Service:\n    def run(self): Helper()\n",
+            encoding="utf-8",
+        )
+        service = ApplicationService()
+
+        result = service.generate_class_diagrams(
+            SourceAnalysisRequest(source, "python"),
+            fan_in_threshold=3,
+        )
+        paths = service.save_diagram_set(root / "output", result, category="class_diagrams")
+
+        assert result.outputs
+        assert all(output.format == "mermaid" for output in result.outputs)
+        assert all(path.parent.name == "class_diagrams" for path in paths)
+        assert all(path.suffix == ".mmd" and path.is_file() for path in paths)
+        assert "classDiagram" in paths[0].read_text(encoding="utf-8")
+
+
 def test_python_only_analysis_rejects_other_languages():
     with TemporaryDirectory() as folder:
         source = Path(folder) / "sample.cs"

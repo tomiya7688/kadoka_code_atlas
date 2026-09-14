@@ -13,6 +13,14 @@ class EntityKind(str, Enum):
     METHOD = "method"
 
 
+class Visibility(str, Enum):
+    UNSPECIFIED = "unspecified"
+    PUBLIC = "public"
+    PROTECTED = "protected"
+    INTERNAL = "internal"
+    PRIVATE = "private"
+
+
 @dataclass(slots=True)
 class CodeEntity:
     """A source entity normalized from a language-specific syntax tree."""
@@ -27,6 +35,8 @@ class CodeEntity:
     parameters: tuple[str, ...] = ()
     decorators: tuple[str, ...] = ()
     calls: tuple[str, ...] = ()
+    visibility: Visibility = Visibility.UNSPECIFIED
+    bases: tuple[str, ...] = ()
 
 
 @dataclass(slots=True)
