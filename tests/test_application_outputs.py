@@ -64,6 +64,29 @@ def test_application_service_generates_and_saves_partitioned_class_diagrams():
         assert "classDiagram" in paths[0].read_text(encoding="utf-8")
 
 
+def test_application_service_generates_and_saves_sequence_diagrams():
+    with TemporaryDirectory() as folder:
+        root = Path(folder)
+        source = root / "sample.py"
+        source.write_text(
+            "def main():\n    helper()\n\ndef helper():\n    return None\n",
+            encoding="utf-8",
+        )
+        service = ApplicationService()
+
+        result = service.generate_sequence_diagrams(
+            SourceAnalysisRequest(source, "python"),
+            max_depth=4,
+        )
+        paths = service.save_diagram_set(root / "output", result, category="sequence_diagrams")
+
+        assert result.outputs
+        assert all(output.format == "mermaid" for output in result.outputs)
+        assert all(path.parent.name == "sequence_diagrams" for path in paths)
+        assert all(path.suffix == ".mmd" and path.is_file() for path in paths)
+        assert "sequenceDiagram" in paths[0].read_text(encoding="utf-8")
+
+
 def test_python_only_analysis_rejects_other_languages():
     with TemporaryDirectory() as folder:
         source = Path(folder) / "sample.cs"
