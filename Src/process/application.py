@@ -10,8 +10,10 @@ from Src.data.files import read_text, write_text
 from Src.data.project_files import detect_language, discover_supported_files
 from Src.evaluators import evaluate_ci
 from Src.generators import CommentGenerator, generate_call_graph_mermaid, rows, to_csv, to_markdown
+from Src.generators.class_diagram import ClassDiagramOptions, build_class_diagram_bundle
 from Src.languages.python import PythonLanguageAdapter
 from Src.renderers import render_ci_workflow
+from Src.renderers.mermaid_class_diagram import render_class_diagram
 
 
 @dataclass(frozen=True, slots=True)
@@ -46,6 +48,19 @@ class CIResult:
 class TextResult:
     content: str
     format: str = "text"
+
+
+@dataclass(frozen=True, slots=True)
+class GeneratedOutput:
+    name: str
+    content: str
+    format: str
+
+
+@dataclass(frozen=True, slots=True)
+class DiagramSetResult:
+    outputs: tuple[GeneratedOutput, ...]
+    statistics: dict[str, int | tuple[int, ...]]
 
 
 class ApplicationService:
@@ -86,6 +101,25 @@ class ApplicationService:
             raise ValueError(f"Unsupported responsibility output format: {output_format}")
         return TextResult(to_markdown(table_rows), format="markdown")
 
+    def generate_class_diagrams(
+        self,
+        request: SourceAnalysisRequest,
+        *,
+        fan_in_threshold: int = 3,
+        options: ClassDiagramOptions | None = None,
+    ) -> DiagramSetResult:
+        module = self._python_module(request)
+        bundle = build_class_diagram_bundle(
+            module,
+            fan_in_threshold=fan_in_threshold,
+            options=options,
+        )
+        outputs = tuple(
+            GeneratedOutput(diagram.name, render_class_diagram(diagram), "mermaid")
+            for diagram in bundle.diagrams
+        )
+        return DiagramSetResult(outputs, bundle.statistics)
+
     def detect_language(self, path: Path) -> str:
         return detect_language(path)
 
@@ -94,6 +128,22 @@ class ApplicationService:
 
     def save_text(self, path: Path, content: str) -> None:
         write_text(path, content)
+
+    def save_diagram_set(
+        self,
+        output_root: Path,
+        result: DiagramSetResult,
+        *,
+        category: str,
+    ) -> tuple[Path, ...]:
+        target = output_root / category
+        paths: list[Path] = []
+        for output in result.outputs:
+            extension = ".mmd" if output.format == "mermaid" else ".txt"
+            path = target / f"{output.name}{extension}"
+            write_text(path, output.content)
+            paths.append(path)
+        return tuple(paths)
 
     @staticmethod
     def _python_module(request: SourceAnalysisRequest):
