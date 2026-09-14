@@ -19,12 +19,14 @@ PROJECT_NAME = "Kadoka Code Atlas"
 _OPERATION_COMMENTS = "Generate comments"
 _OPERATION_CALL_GRAPH = "Call graph (Mermaid)"
 _OPERATION_CLASS_DIAGRAM = "Class diagrams (Mermaid)"
+_OPERATION_SEQUENCE_DIAGRAM = "Sequence diagrams (Mermaid)"
 _OPERATION_RESPONSIBILITY = "Class responsibility table"
 _OPERATION_CI = "GitHub Actions CI graph"
 _OPERATIONS = (
     _OPERATION_COMMENTS,
     _OPERATION_CALL_GRAPH,
     _OPERATION_CLASS_DIAGRAM,
+    _OPERATION_SEQUENCE_DIAGRAM,
     _OPERATION_RESPONSIBILITY,
     _OPERATION_CI,
 )
@@ -42,6 +44,7 @@ class AtlasTkApp:
         self.last_result = ""
         self.last_format = "text"
         self.last_diagram_set: DiagramSetResult | None = None
+        self.last_diagram_category: str | None = None
 
         self.path_var = tk.StringVar(value="No file or folder selected")
         self.language_var = tk.StringVar(value="Language: -")
@@ -73,7 +76,7 @@ class AtlasTkApp:
             textvariable=self.operation_var,
             values=_OPERATIONS,
             state="readonly",
-            width=30,
+            width=32,
         )
         operation.pack(side=tk.LEFT)
         ttk.Button(controls, text="Run", command=self.run_selected).pack(side=tk.LEFT, padx=(8, 0))
@@ -155,6 +158,7 @@ class AtlasTkApp:
         elif language != "python" and self.operation_var.get() in {
             _OPERATION_CALL_GRAPH,
             _OPERATION_CLASS_DIAGRAM,
+            _OPERATION_SEQUENCE_DIAGRAM,
             _OPERATION_RESPONSIBILITY,
         }:
             self.operation_var.set(_OPERATION_COMMENTS)
@@ -170,6 +174,7 @@ class AtlasTkApp:
         self.status_var.set(f"Running {operation} for {path.name}...")
         self.root.update_idletasks()
         self.last_diagram_set = None
+        self.last_diagram_category = None
 
         try:
             if operation == _OPERATION_COMMENTS:
@@ -185,6 +190,13 @@ class AtlasTkApp:
             elif operation == _OPERATION_CLASS_DIAGRAM:
                 diagrams = self.service.generate_class_diagrams(SourceAnalysisRequest(path, language))
                 self.last_diagram_set = diagrams
+                self.last_diagram_category = "class_diagrams"
+                content = self._diagram_set_text(diagrams)
+                result_format = "mermaid-bundle"
+            elif operation == _OPERATION_SEQUENCE_DIAGRAM:
+                diagrams = self.service.generate_sequence_diagrams(SourceAnalysisRequest(path, language))
+                self.last_diagram_set = diagrams
+                self.last_diagram_category = "sequence_diagrams"
                 content = self._diagram_set_text(diagrams)
                 result_format = "mermaid-bundle"
             elif operation == _OPERATION_RESPONSIBILITY:
@@ -212,7 +224,7 @@ class AtlasTkApp:
     @staticmethod
     def _diagram_set_text(result: DiagramSetResult) -> str:
         if not result.outputs:
-            return "No class diagrams were generated.\n"
+            return "No diagrams were generated.\n"
         sections = []
         for output in result.outputs:
             sections.append(f"%% {output.name}\n{output.content.rstrip()}")
@@ -229,16 +241,16 @@ class AtlasTkApp:
             messagebox.showinfo(PROJECT_NAME, "Run an analysis before saving a result.")
             return
 
-        if self.last_diagram_set is not None:
+        if self.last_diagram_set is not None and self.last_diagram_category is not None:
             selected = filedialog.askdirectory(title="Select output folder")
             if not selected:
                 return
             paths = self.service.save_diagram_set(
                 Path(selected),
                 self.last_diagram_set,
-                category="class_diagrams",
+                category=self.last_diagram_category,
             )
-            self.status_var.set(f"Saved {len(paths)} class diagram(s) under {selected}")
+            self.status_var.set(f"Saved {len(paths)} diagram(s) under {selected}")
             return
 
         extension = {
