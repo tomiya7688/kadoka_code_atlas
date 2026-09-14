@@ -1,4 +1,5 @@
 using Kadoka.CodeAtlas.Core.Ir;
+using Xunit;
 
 namespace Kadoka.CodeAtlas.Tests;
 
