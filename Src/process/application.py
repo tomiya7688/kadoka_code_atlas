@@ -131,20 +131,37 @@ class ApplicationService:
             self.config.generator_options.get("sequence_diagram")
         )
 
+    def sequence_diagram_settings(self) -> dict[str, bool]:
+        options = self.sequence_diagram_options()
+        return {
+            "show_duplicate_calls": options.show_duplicate_calls,
+            "show_returns": options.show_returns,
+        }
+
     def generate_sequence_diagrams(
         self,
         request: SourceAnalysisRequest,
         *,
         fan_in_threshold: int = 3,
         max_depth: int = 8,
-        options: SequenceDiagramOptions | None = None,
+        show_duplicate_calls: bool | None = None,
+        show_returns: bool | None = None,
     ) -> DiagramSetResult:
         module = self._python_module(request)
+        defaults = self.sequence_diagram_options()
+        options = SequenceDiagramOptions(
+            show_duplicate_calls=(
+                defaults.show_duplicate_calls
+                if show_duplicate_calls is None
+                else show_duplicate_calls
+            ),
+            show_returns=defaults.show_returns if show_returns is None else show_returns,
+        )
         bundle = build_sequence_diagram_bundle(
             module,
             fan_in_threshold=fan_in_threshold,
             max_depth=max_depth,
-            options=options or self.sequence_diagram_options(),
+            options=options,
         )
         outputs = tuple(
             GeneratedOutput(diagram.name, render_sequence_diagram(diagram), "mermaid")
