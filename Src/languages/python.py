@@ -85,6 +85,7 @@ class PythonLanguageAdapter:
         if node.args.kwarg:
             parameters.append(f"**{node.args.kwarg.arg}")
 
+        call_sequence = self._function_call_sequence(node)
         return CodeEntity(
             kind=kind,
             name=node.name,
@@ -95,15 +96,16 @@ class PythonLanguageAdapter:
             docstring=ast.get_docstring(node, clean=False),
             parameters=tuple(parameters),
             decorators=tuple(self._expr_text(item, source) for item in node.decorator_list),
-            calls=self._function_calls(node),
+            calls=tuple(dict.fromkeys(call_sequence)),
+            call_sequence=call_sequence,
             visibility=self._visibility(node.name),
         )
 
     @classmethod
-    def _function_calls(
+    def _function_call_sequence(
         cls, node: ast.FunctionDef | ast.AsyncFunctionDef
     ) -> tuple[str, ...]:
-        """Collect calls owned by one lexical function scope only."""
+        """Collect calls in source order for one lexical function scope only."""
 
         calls: list[str] = []
 
@@ -129,7 +131,7 @@ class PythonLanguageAdapter:
         visitor = ScopeVisitor()
         for statement in node.body:
             visitor.visit(statement)
-        return tuple(dict.fromkeys(calls))
+        return tuple(calls)
 
     @staticmethod
     def _visibility(name: str) -> Visibility:
