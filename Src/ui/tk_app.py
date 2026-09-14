@@ -20,6 +20,7 @@ _OPERATION_COMMENTS = "Generate comments"
 _OPERATION_CALL_GRAPH = "Call graph (Mermaid)"
 _OPERATION_CLASS_DIAGRAM = "Class diagrams (Mermaid)"
 _OPERATION_SEQUENCE_DIAGRAM = "Sequence diagrams (Mermaid)"
+_OPERATION_COMMUNICATION_DIAGRAM = "Communication diagrams (Mermaid)"
 _OPERATION_RESPONSIBILITY = "Class responsibility table"
 _OPERATION_CI = "GitHub Actions CI graph"
 _OPERATIONS = (
@@ -27,6 +28,7 @@ _OPERATIONS = (
     _OPERATION_CALL_GRAPH,
     _OPERATION_CLASS_DIAGRAM,
     _OPERATION_SEQUENCE_DIAGRAM,
+    _OPERATION_COMMUNICATION_DIAGRAM,
     _OPERATION_RESPONSIBILITY,
     _OPERATION_CI,
 )
@@ -81,7 +83,7 @@ class AtlasTkApp:
             textvariable=self.operation_var,
             values=_OPERATIONS,
             state="readonly",
-            width=32,
+            width=36,
         )
         operation.pack(side=tk.LEFT)
         ttk.Button(controls, text="Run", command=self.run_selected).pack(side=tk.LEFT, padx=(8, 0))
@@ -181,6 +183,7 @@ class AtlasTkApp:
             _OPERATION_CALL_GRAPH,
             _OPERATION_CLASS_DIAGRAM,
             _OPERATION_SEQUENCE_DIAGRAM,
+            _OPERATION_COMMUNICATION_DIAGRAM,
             _OPERATION_RESPONSIBILITY,
         }:
             self.operation_var.set(_OPERATION_COMMENTS)
@@ -223,6 +226,15 @@ class AtlasTkApp:
                 )
                 self.last_diagram_set = diagrams
                 self.last_diagram_category = "sequence_diagrams"
+                content = self._diagram_set_text(diagrams)
+                result_format = "mermaid-bundle"
+            elif operation == _OPERATION_COMMUNICATION_DIAGRAM:
+                diagrams = self.service.generate_communication_diagrams(
+                    SourceAnalysisRequest(path, language),
+                    show_duplicate_calls=self.sequence_duplicate_var.get(),
+                )
+                self.last_diagram_set = diagrams
+                self.last_diagram_category = "communication_diagrams"
                 content = self._diagram_set_text(diagrams)
                 result_format = "mermaid-bundle"
             elif operation == _OPERATION_RESPONSIBILITY:
