@@ -65,6 +65,26 @@ app.py             # application entry point
 
 現在の能力・既知制約は [`docs/current_state.md`](docs/current_state.md)、責務からファイルを探す場合は [`docs/responsibility_map.md`](docs/responsibility_map.md) を参照してください。
 
+## Sequence diagram settings
+
+ルートに `kadoka-code-atlas.json` を置くと起動時に読み込みます。設定例は `kadoka-code-atlas.example.json` を参照してください。
+
+```json
+{
+  "generator_options": {
+    "sequence_diagram": {
+      "show_duplicate_calls": true,
+      "show_returns": false
+    }
+  }
+}
+```
+
+- `show_duplicate_calls`: 同一callerから同一calleeへの同一呼び出しを複数回表示するか
+- `show_returns`: 戻り値メッセージを表示するか
+- 循環呼び出しは設定にかかわらずシーケンス図から除外し、無限展開を防止します
+- GUI上のチェック項目で、その実行時だけ設定を上書きできます
+
 ## Project operations
 
 GitHub Issue をタスク台帳として扱い、原則 `1 Issue ~= 1 PR` です。
