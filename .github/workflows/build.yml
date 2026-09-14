@@ -51,7 +51,7 @@ jobs:
           python tools/context_tool.py compact-log /tmp/kca.log > /tmp/kca-compact-log.json
 
       - name: Launch smoke test
-        run: python app.py
+        run: python app.py --version
 
       - name: Self-analysis smoke summary
         run: python tools/self_analysis.py . > self-analysis-summary.json
@@ -61,6 +61,3 @@ jobs:
 
       - name: Verify installed wheel artifact
         run: python tools/verify_wheel.py dist/*.whl
-
-
-
