@@ -6,7 +6,8 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from Src.analyzers.ci import parse_github_actions
-from Src.data.files import read_text
+from Src.data.files import read_text, write_text
+from Src.data.project_files import detect_language, discover_supported_files
 from Src.evaluators import evaluate_ci
 from Src.generators import CommentGenerator, generate_call_graph_mermaid, rows, to_csv, to_markdown
 from Src.languages.python import PythonLanguageAdapter
@@ -84,6 +85,15 @@ class ApplicationService:
         if normalized != "markdown":
             raise ValueError(f"Unsupported responsibility output format: {output_format}")
         return TextResult(to_markdown(table_rows), format="markdown")
+
+    def detect_language(self, path: Path) -> str:
+        return detect_language(path)
+
+    def discover_supported_files(self, root: Path) -> list[Path]:
+        return discover_supported_files(root)
+
+    def save_text(self, path: Path, content: str) -> None:
+        write_text(path, content)
 
     @staticmethod
     def _python_module(request: SourceAnalysisRequest):
