@@ -52,11 +52,17 @@ The complete Required/Recommended/Advisory policy is `specification/architecture
 - Class diagrams default to caller-centered grouping; heavily referenced classes may get dedicated callee-centered views.
 
 ## Low-context workflow
+The current `ai-context-reducer` is a development-only dependency. Use `reducer.bat setup` on Windows or `./reducer.sh setup` on Unix-like systems to clone/update the latest reducer into `.dev/ai-context-reducer` and analyze this repository. The `.dev/` checkout is intentionally ignored and must never be included in product builds or release artifacts.
+
+`prepare_work.bat` invokes the reducer first, then falls back to the repository-local context helpers if reducer setup is unavailable.
+
 Before general Issue work, use `next_issue.bat` to select one priority task and create a structured Task Capsule.
 
 For concurrent work, use `context.bat remote-delta` (or `./context.sh remote-delta`) before broad re-reading. It reports ahead/behind, commit subjects, changed files, shortstat, and a bounded diff excerpt. `--ff` is explicit and only allows a clean fast-forward.
 
 Useful commands:
+- `reducer.bat update` / `./reducer.sh update`
+- `reducer.bat analyze` / `./reducer.sh analyze`
 - `context.bat profile`
 - `context.bat doc-index`
 - `context.bat structure-index`
