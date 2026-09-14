@@ -13,7 +13,8 @@ def render_sequence_diagram(diagram: SequenceDiagram) -> str:
     for message in diagram.messages:
         caller = ids[message.caller]
         callee = ids[message.callee]
-        lines.append(f"    {caller}->>{callee}: {_label(message.label)}")
+        arrow = "-->>" if message.kind == "return" else "->>"
+        lines.append(f"    {caller}{arrow}{callee}: {_label(message.label)}")
     return "\n".join(lines) + "\n"
 
 

@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
+from collections.abc import Mapping
+
 from Src.analyzers.call_sequence import (
     ResolvedCall,
     build_sequence_relation_graph,
@@ -16,19 +19,42 @@ from Src.models.sequence_diagram import (
 )
 
 
+@dataclass(frozen=True, slots=True)
+class SequenceDiagramOptions:
+    """User-selectable sequence rendering semantics before renderer selection."""
+
+    show_duplicate_calls: bool = True
+    show_returns: bool = False
+
+    @classmethod
+    def from_mapping(cls, value: Mapping[str, object] | None) -> "SequenceDiagramOptions":
+        if value is None:
+            return cls()
+        duplicate = value.get("show_duplicate_calls", True)
+        returns = value.get("show_returns", False)
+        if not isinstance(duplicate, bool):
+            raise ValueError("sequence_diagram.show_duplicate_calls must be boolean")
+        if not isinstance(returns, bool):
+            raise ValueError("sequence_diagram.show_returns must be boolean")
+        return cls(show_duplicate_calls=duplicate, show_returns=returns)
+
+
 def build_sequence_diagram_bundle(
     module: ModuleIR,
     *,
     fan_in_threshold: int = 3,
     max_depth: int = 8,
+    options: SequenceDiagramOptions | None = None,
 ) -> SequenceDiagramBundle:
     """Generate entry/caller-centered sequence diagrams plus shared callee diagrams."""
     if max_depth < 0:
         raise ValueError("max_depth must be >= 0")
+    options = options or SequenceDiagramOptions()
 
     sequences = resolve_call_sequences(module)
     graph = build_sequence_relation_graph(module, sequences)
     partition = partition_graph(graph, fan_in_threshold=fan_in_threshold)
+    blocked_cycle_edges = _cycle_edges(graph.cycles())
     incoming: dict[str, set[str]] = {node: set() for node in graph.nodes}
     for edge in graph.edges:
         incoming.setdefault(edge.callee, set()).add(edge.caller)
@@ -49,6 +75,8 @@ def build_sequence_diagram_bundle(
                 sequences,
                 allowed=selected,
                 max_depth=max_depth,
+                options=options,
+                blocked_cycle_edges=blocked_cycle_edges,
             )
             diagrams.append(
                 SequenceDiagram(
@@ -60,11 +88,20 @@ def build_sequence_diagram_bundle(
 
     for shared in partition.shared:
         messages: list[SequenceMessage] = []
+        emitted: set[tuple[str, str, str]] = set()
         for caller in sorted(incoming.get(shared, ())):
+            if (caller, shared) in blocked_cycle_edges:
+                continue
             label = _first_label(caller, shared, sequences)
-            messages.append(SequenceMessage(caller, shared, label, 0))
+            if _append_call(messages, emitted, caller, shared, label, 0, options):
+                if options.show_returns:
+                    messages.append(SequenceMessage(shared, caller, "return", 0, "return"))
         for call in sequences.get(shared, ()):
-            messages.append(SequenceMessage(shared, call.target, call.raw, 1))
+            if (shared, call.target) in blocked_cycle_edges:
+                continue
+            if _append_call(messages, emitted, shared, call.target, call.raw, 1, options):
+                if options.show_returns and call.target in sequences:
+                    messages.append(SequenceMessage(call.target, shared, "return", 1, "return"))
         frozen = tuple(messages)
         diagrams.append(
             SequenceDiagram(
@@ -83,22 +120,53 @@ def _expand_sequence(
     *,
     allowed: set[str],
     max_depth: int,
+    options: SequenceDiagramOptions,
+    blocked_cycle_edges: set[tuple[str, str]],
 ) -> tuple[SequenceMessage, ...]:
     messages: list[SequenceMessage] = []
+    emitted: set[tuple[str, str, str]] = set()
 
     def walk(caller: str, depth: int, active: frozenset[str]) -> None:
         if depth >= max_depth:
             return
         for call in sequences.get(caller, ()):
-            messages.append(SequenceMessage(caller, call.target, call.raw, depth))
-            if call.target not in allowed or call.target not in sequences:
+            if (caller, call.target) in blocked_cycle_edges or call.target in active:
                 continue
-            if call.target in active:
+            if not _append_call(messages, emitted, caller, call.target, call.raw, depth, options):
                 continue
-            walk(call.target, depth + 1, active | {call.target})
+            is_internal = call.target in sequences
+            if call.target in allowed and is_internal:
+                walk(call.target, depth + 1, active | {call.target})
+            if options.show_returns and is_internal:
+                messages.append(SequenceMessage(call.target, caller, "return", depth, "return"))
 
     walk(root, 0, frozenset({root}))
     return tuple(messages)
+
+
+def _append_call(
+    messages: list[SequenceMessage],
+    emitted: set[tuple[str, str, str]],
+    caller: str,
+    callee: str,
+    label: str,
+    depth: int,
+    options: SequenceDiagramOptions,
+) -> bool:
+    key = (caller, callee, label)
+    if not options.show_duplicate_calls and key in emitted:
+        return False
+    emitted.add(key)
+    messages.append(SequenceMessage(caller, callee, label, depth, "call"))
+    return True
+
+
+def _cycle_edges(cycles: list[tuple[str, ...]]) -> set[tuple[str, str]]:
+    return {
+        (caller, callee)
+        for cycle in cycles
+        for caller, callee in zip(cycle, cycle[1:])
+    }
 
 
 def _participants(

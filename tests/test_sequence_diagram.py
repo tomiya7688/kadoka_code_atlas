@@ -1,4 +1,4 @@
-from Src.generators.sequence_diagram import build_sequence_diagram_bundle
+from Src.generators.sequence_diagram import SequenceDiagramOptions, build_sequence_diagram_bundle
 from Src.languages.python import PythonLanguageAdapter
 from Src.renderers.mermaid_sequence_diagram import render_sequence_diagram
 
@@ -49,6 +49,45 @@ def tail():
     ]
 
 
+def test_duplicate_calls_can_be_hidden():
+    bundle = _bundle(
+        """
+def main():
+    helper()
+    helper()
+    tail()
+
+def helper(): pass
+def tail(): pass
+""",
+        options=SequenceDiagramOptions(show_duplicate_calls=False),
+    )
+    diagram = next(item for item in bundle.diagrams if item.name.endswith("main"))
+
+    assert [(item.caller, item.callee) for item in diagram.messages] == [
+        ("main", "helper"),
+        ("main", "tail"),
+    ]
+
+
+def test_duplicate_calls_are_shown_by_default():
+    bundle = _bundle(
+        """
+def main():
+    helper()
+    helper()
+
+def helper(): pass
+"""
+    )
+    diagram = next(item for item in bundle.diagrams if item.name.endswith("main"))
+
+    assert [(item.caller, item.callee) for item in diagram.messages] == [
+        ("main", "helper"),
+        ("main", "helper"),
+    ]
+
+
 def test_sequence_resolves_self_method_calls():
     bundle = _bundle(
         """
@@ -67,7 +106,7 @@ class Service:
     ]
 
 
-def test_sequence_stops_cycles_without_losing_cycle_message():
+def test_sequence_excludes_cycle_edges_from_diagram():
     bundle = _bundle(
         """
 def a(): b()
@@ -76,10 +115,7 @@ def b(): a()
     )
     diagram = bundle.diagrams[0]
 
-    assert [(item.caller, item.callee) for item in diagram.messages] == [
-        ("a", "b"),
-        ("b", "a"),
-    ]
+    assert diagram.messages == ()
     assert bundle.statistics["cycle_count"] == 1
 
 
@@ -99,6 +135,37 @@ def d(): pass
         ("a", "b"),
         ("b", "c"),
     ]
+
+
+def test_returns_can_be_enabled():
+    bundle = _bundle(
+        """
+def main(): helper()
+def helper(): leaf()
+def leaf(): pass
+""",
+        options=SequenceDiagramOptions(show_returns=True),
+    )
+    diagram = next(item for item in bundle.diagrams if item.name.endswith("main"))
+
+    assert [(item.caller, item.callee, item.kind) for item in diagram.messages] == [
+        ("main", "helper", "call"),
+        ("helper", "leaf", "call"),
+        ("leaf", "helper", "return"),
+        ("helper", "main", "return"),
+    ]
+
+
+def test_returns_are_hidden_by_default():
+    bundle = _bundle(
+        """
+def main(): helper()
+def helper(): pass
+"""
+    )
+    diagram = next(item for item in bundle.diagrams if item.name.endswith("main"))
+
+    assert all(item.kind == "call" for item in diagram.messages)
 
 
 def test_high_fan_in_callable_gets_shared_sequence():
@@ -121,16 +188,27 @@ def sink(): pass
     assert bundle.statistics["shared_node_count"] == 1
 
 
-def test_mermaid_sequence_renderer():
+def test_sequence_options_validate_boolean_values():
+    try:
+        SequenceDiagramOptions.from_mapping({"show_returns": "yes"})
+    except ValueError as error:
+        assert "show_returns" in str(error)
+    else:
+        raise AssertionError("invalid sequence option should be rejected")
+
+
+def test_mermaid_sequence_renderer_uses_dashed_return_arrow():
     bundle = _bundle(
         """
 def main(): helper()
 def helper(): pass
-"""
+""",
+        options=SequenceDiagramOptions(show_returns=True),
     )
     rendered = render_sequence_diagram(bundle.diagrams[0])
 
     assert rendered.startswith("sequenceDiagram\n")
     assert "participant p0 as main" in rendered
     assert "->>" in rendered
-    assert ": helper" in rendered
+    assert "-->>" in rendered
+    assert ": return" in rendered

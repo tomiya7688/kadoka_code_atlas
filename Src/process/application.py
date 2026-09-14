@@ -11,8 +11,9 @@ from Src.data.project_files import detect_language, discover_supported_files
 from Src.evaluators import evaluate_ci
 from Src.generators import CommentGenerator, generate_call_graph_mermaid, rows, to_csv, to_markdown
 from Src.generators.class_diagram import ClassDiagramOptions, build_class_diagram_bundle
-from Src.generators.sequence_diagram import build_sequence_diagram_bundle
+from Src.generators.sequence_diagram import SequenceDiagramOptions, build_sequence_diagram_bundle
 from Src.languages.python import PythonLanguageAdapter
+from Src.models.config import AtlasConfig
 from Src.renderers import render_ci_workflow
 from Src.renderers.mermaid_class_diagram import render_class_diagram
 from Src.renderers.mermaid_sequence_diagram import render_sequence_diagram
@@ -68,6 +69,9 @@ class DiagramSetResult:
 class ApplicationService:
     """Orchestrate analysis and generation without presentation decisions."""
 
+    def __init__(self, config: AtlasConfig | None = None) -> None:
+        self.config = config or AtlasConfig()
+
     def generate_comments(self, request: CommentRequest) -> CommentResult:
         return CommentResult(CommentGenerator().generate(read_text(request.source), request.language))
 
@@ -122,18 +126,42 @@ class ApplicationService:
         )
         return DiagramSetResult(outputs, bundle.statistics)
 
+    def sequence_diagram_options(self) -> SequenceDiagramOptions:
+        return SequenceDiagramOptions.from_mapping(
+            self.config.generator_options.get("sequence_diagram")
+        )
+
+    def sequence_diagram_settings(self) -> dict[str, bool]:
+        options = self.sequence_diagram_options()
+        return {
+            "show_duplicate_calls": options.show_duplicate_calls,
+            "show_returns": options.show_returns,
+        }
+
     def generate_sequence_diagrams(
         self,
         request: SourceAnalysisRequest,
         *,
         fan_in_threshold: int = 3,
         max_depth: int = 8,
+        show_duplicate_calls: bool | None = None,
+        show_returns: bool | None = None,
     ) -> DiagramSetResult:
         module = self._python_module(request)
+        defaults = self.sequence_diagram_options()
+        options = SequenceDiagramOptions(
+            show_duplicate_calls=(
+                defaults.show_duplicate_calls
+                if show_duplicate_calls is None
+                else show_duplicate_calls
+            ),
+            show_returns=defaults.show_returns if show_returns is None else show_returns,
+        )
         bundle = build_sequence_diagram_bundle(
             module,
             fan_in_threshold=fan_in_threshold,
             max_depth=max_depth,
+            options=options,
         )
         outputs = tuple(
             GeneratedOutput(diagram.name, render_sequence_diagram(diagram), "mermaid")
