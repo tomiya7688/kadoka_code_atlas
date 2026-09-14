@@ -12,34 +12,9 @@ from Src.process.application import (
     CommentRequest,
     SourceAnalysisRequest,
 )
+from Src.ui.project_files import detect_language, discover_supported_files
 
 PROJECT_NAME = "Kadoka Code Atlas"
-
-_EXTENSION_LANGUAGE = {
-    ".py": "python",
-    ".gd": "gdscript",
-    ".cs": "csharp",
-    ".cpp": "cpp",
-    ".cc": "cpp",
-    ".cxx": "cpp",
-    ".hpp": "cpp",
-    ".hxx": "cpp",
-    ".java": "java",
-    ".go": "go",
-    ".yml": "yaml",
-    ".yaml": "yaml",
-}
-
-_IGNORED_DIRECTORIES = {
-    ".git",
-    ".dev",
-    ".codex",
-    ".venv",
-    "venv",
-    "build",
-    "dist",
-    "__pycache__",
-}
 
 _OPERATION_COMMENTS = "Generate comments"
 _OPERATION_CALL_GRAPH = "Call graph (Mermaid)"
@@ -51,31 +26,6 @@ _OPERATIONS = (
     _OPERATION_RESPONSIBILITY,
     _OPERATION_CI,
 )
-
-
-def detect_language(path: Path) -> str:
-    """Return a stable language id for a selected file."""
-    return _EXTENSION_LANGUAGE.get(path.suffix.lower(), "unknown")
-
-
-def discover_supported_files(root: Path) -> list[Path]:
-    """Return supported files below *root* without walking generated/tooling trees."""
-    if root.is_file():
-        return [root] if detect_language(root) != "unknown" else []
-
-    result: list[Path] = []
-    for path in root.rglob("*"):
-        if not path.is_file():
-            continue
-        try:
-            relative_parts = path.relative_to(root).parts[:-1]
-        except ValueError:
-            relative_parts = ()
-        if any(part in _IGNORED_DIRECTORIES for part in relative_parts):
-            continue
-        if detect_language(path) != "unknown":
-            result.append(path)
-    return sorted(result, key=lambda item: str(item).lower())
 
 
 class AtlasTkApp:
@@ -180,10 +130,7 @@ class AtlasTkApp:
         self.path_var.set(str(base_path))
         self.file_list.delete(0, tk.END)
         for path in files:
-            if base_path.is_dir():
-                display = str(path.relative_to(base_path))
-            else:
-                display = path.name
+            display = str(path.relative_to(base_path)) if base_path.is_dir() else path.name
             self.file_list.insert(tk.END, display)
         if files:
             self.file_list.selection_set(0)
@@ -242,7 +189,7 @@ class AtlasTkApp:
                 result_format = "mermaid"
             else:
                 raise ValueError(f"Unknown operation: {operation}")
-        except Exception as exc:  # Presentation boundary: surface failures to the user.
+        except Exception as exc:
             self.status_var.set("Analysis failed.")
             messagebox.showerror(PROJECT_NAME, str(exc))
             return
