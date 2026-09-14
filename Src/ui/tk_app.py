@@ -6,13 +6,14 @@ from pathlib import Path
 import tkinter as tk
 from tkinter import filedialog, messagebox, scrolledtext, ttk
 
+from Src.data.files import write_text
+from Src.data.project_files import detect_language, discover_supported_files
 from Src.process.application import (
     ApplicationService,
     CIRequest,
     CommentRequest,
     SourceAnalysisRequest,
 )
-from Src.ui.project_files import detect_language, discover_supported_files
 
 PROJECT_NAME = "Kadoka Code Atlas"
 
@@ -223,7 +224,7 @@ class AtlasTkApp:
         )
         if not selected:
             return
-        Path(selected).write_text(self.last_result, encoding="utf-8")
+        write_text(Path(selected), self.last_result)
         self.status_var.set(f"Saved result to {selected}")
 
 
