@@ -4,15 +4,21 @@ import argparse
 import sys
 from pathlib import Path
 from Src.process.application import ApplicationService, CIRequest, CommentRequest
+from Src.process.config_service import load_config
 from Src.data.files import write_text
 PROJECT_NAME = "Kadoka Code Atlas"
 PROJECT_VERSION = "0.1.0"
+DEFAULT_CONFIG_PATH = Path("kadoka-code-atlas.json")
+
+
+def _application_service() -> ApplicationService:
+    return ApplicationService(load_config(DEFAULT_CONFIG_PATH))
 
 
 def _launch_gui() -> int:
     from Src.ui import launch_gui
 
-    launch_gui()
+    launch_gui(_application_service())
     return 0
 
 
@@ -45,7 +51,7 @@ def main(argv: list[str] | None = None) -> int:
         parser.print_help()
         return 0
 
-    service = ApplicationService()
+    service = _application_service()
     if args.command == "ci":
         result = service.analyze_ci(CIRequest(Path(args.source)))
         if args.output:
