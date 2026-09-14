@@ -24,7 +24,7 @@ def main() -> int:
         python = venv / ("Scripts" if sys.platform == "win32" else "bin") / ("python.exe" if sys.platform == "win32" else "python")
         run([str(python), "-m", "pip", "install", "--no-deps", str(wheel)])
         run([str(python), "-c", "from Src.analyzers import CallGraph; from Src.generators import CommentGenerator; print('artifact imports passed')"])
-        run([str(python), "-m", "app"])
+        run([str(python), "-m", "app", "--version"])
     return 0
 
 
