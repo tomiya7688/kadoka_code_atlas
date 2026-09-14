@@ -11,6 +11,7 @@ class SequenceMessage:
     callee: str
     label: str
     depth: int = 0
+    kind: str = "call"
 
 
 @dataclass(frozen=True, slots=True)
