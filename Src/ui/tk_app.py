@@ -6,8 +6,6 @@ from pathlib import Path
 import tkinter as tk
 from tkinter import filedialog, messagebox, scrolledtext, ttk
 
-from Src.data.files import write_text
-from Src.data.project_files import detect_language, discover_supported_files
 from Src.process.application import (
     ApplicationService,
     CIRequest,
@@ -109,7 +107,7 @@ class AtlasTkApp:
         if not selected:
             return
         path = Path(selected)
-        if detect_language(path) == "unknown":
+        if self.service.detect_language(path) == "unknown":
             messagebox.showwarning(PROJECT_NAME, "The selected file type is not supported yet.")
             return
         self._load_paths(path, [path])
@@ -119,7 +117,7 @@ class AtlasTkApp:
         if not selected:
             return
         root = Path(selected)
-        files = discover_supported_files(root)
+        files = self.service.discover_supported_files(root)
         self._load_paths(root, files)
         if not files:
             self.status_var.set("No supported source files were found in the selected folder.")
@@ -146,7 +144,7 @@ class AtlasTkApp:
 
     def _select_file(self, index: int) -> None:
         self.current_file = self.files[index]
-        language = detect_language(self.current_file)
+        language = self.service.detect_language(self.current_file)
         self.language_var.set(f"Language: {language}")
         if language == "yaml":
             self.operation_var.set(_OPERATION_CI)
@@ -162,7 +160,7 @@ class AtlasTkApp:
             return
 
         path = self.current_file
-        language = detect_language(path)
+        language = self.service.detect_language(path)
         operation = self.operation_var.get()
         self.status_var.set(f"Running {operation} for {path.name}...")
         self.root.update_idletasks()
@@ -224,7 +222,7 @@ class AtlasTkApp:
         )
         if not selected:
             return
-        write_text(Path(selected), self.last_result)
+        self.service.save_text(Path(selected), self.last_result)
         self.status_var.set(f"Saved result to {selected}")
 
 
