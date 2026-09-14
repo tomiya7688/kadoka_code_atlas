@@ -2,6 +2,11 @@
 setlocal
 cd /d "%~dp0"
 
+call reducer.bat setup
+if errorlevel 1 (
+  echo [WARN] ai-context-reducer setup failed; continuing with repository-local context tools. 1>&2
+)
+
 where python >nul 2>nul
 if errorlevel 1 (
   echo [ERROR] Python was not found in PATH.

@@ -23,6 +23,9 @@ htmlcov/
 # Generated local AI/context artifacts
 .codex/
 
+# Development-only external tools
+.dev/
+
 # IDE / OS
 .vscode/
 .idea/
