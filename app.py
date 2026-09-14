@@ -1,4 +1,4 @@
-"""Kadoka Code Atlas command-line entry point."""
+"""Kadoka Code Atlas application entry point."""
 from __future__ import annotations
 import argparse
 import sys
@@ -6,10 +6,25 @@ from pathlib import Path
 from Src.process.application import ApplicationService, CIRequest, CommentRequest
 from Src.data.files import write_text
 PROJECT_NAME = "Kadoka Code Atlas"
+PROJECT_VERSION = "0.1.0"
+
+
+def _launch_gui() -> int:
+    from Src.ui import launch_gui
+
+    launch_gui()
+    return 0
+
 
 def main(argv: list[str] | None = None) -> int:
+    arguments = list(sys.argv[1:] if argv is None else argv)
+    if not arguments:
+        return _launch_gui()
+
     parser = argparse.ArgumentParser(description=PROJECT_NAME)
+    parser.add_argument("--version", action="store_true", help="Show version and exit.")
     sub = parser.add_subparsers(dest="command")
+    sub.add_parser("gui", help="Open the desktop GUI.")
     comment = sub.add_parser("comment", help="Generate deterministic source comments.")
     comment.add_argument("source")
     comment.add_argument("--language", help="Adapter name; inferred from the extension.")
@@ -19,10 +34,17 @@ def main(argv: list[str] | None = None) -> int:
     ci.add_argument("source")
     ci.add_argument("--output")
     ci.add_argument("--check", action="store_true", help="Report quality findings and fail on errors.")
-    args = parser.parse_args(argv)
-    if args.command not in {"comment", "ci"}:
-        print(PROJECT_NAME)
+    args = parser.parse_args(arguments)
+
+    if args.version:
+        print(f"{PROJECT_NAME} {PROJECT_VERSION}")
         return 0
+    if args.command == "gui":
+        return _launch_gui()
+    if args.command not in {"comment", "ci"}:
+        parser.print_help()
+        return 0
+
     service = ApplicationService()
     if args.command == "ci":
         result = service.analyze_ci(CIRequest(Path(args.source)))
@@ -46,6 +68,7 @@ def main(argv: list[str] | None = None) -> int:
     else:
         print(result.content, end="")
     return 0
+
 
 if __name__ == "__main__":
     raise SystemExit(main())
