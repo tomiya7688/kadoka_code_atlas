@@ -1,0 +1,49 @@
+name: Python EXE
+
+on:
+  pull_request:
+    paths:
+      - "app.py"
+      - "Src/**"
+      - "pyproject.toml"
+      - "build_exe.bat"
+      - ".github/workflows/python-exe.yml"
+  workflow_dispatch:
+
+jobs:
+  build-windows-exe:
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install project and build tools
+        run: py -3 -m pip install -e ".[test,exe]"
+
+      - name: Run tests
+        run: py -3 -m pytest -q
+
+      - name: Build single-file EXE
+        shell: cmd
+        run: build_exe.bat
+
+      - name: Smoke test EXE
+        shell: powershell
+        run: |
+          $output = & .\dist\kadoka-code-atlas.exe
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          if ($output -notmatch "Kadoka Code Atlas") {
+            Write-Error "Unexpected EXE output: $output"
+            exit 1
+          }
+
+      - name: Upload Windows EXE
+        uses: actions/upload-artifact@v4
+        with:
+          name: kadoka-code-atlas-windows-x64
+          path: dist/kadoka-code-atlas.exe
+          if-no-files-found: error
