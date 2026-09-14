@@ -35,6 +35,7 @@ class CodeEntity:
     parameters: tuple[str, ...] = ()
     decorators: tuple[str, ...] = ()
     calls: tuple[str, ...] = ()
+    call_sequence: tuple[str, ...] = ()
     visibility: Visibility = Visibility.UNSPECIFIED
     bases: tuple[str, ...] = ()
 
