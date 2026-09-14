@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import ast
 
-from Src.analyzers.ir import CodeEntity, EntityKind, ModuleIR
+from Src.analyzers.ir import CodeEntity, EntityKind, ModuleIR, Visibility
 from Src.analyzers.ir_queries import qualified_name
 
 
@@ -66,6 +66,8 @@ class PythonLanguageAdapter:
             parent=parent,
             docstring=ast.get_docstring(node, clean=False),
             decorators=tuple(self._expr_text(item, source) for item in node.decorator_list),
+            visibility=self._visibility(node.name),
+            bases=tuple(self._expr_text(item, source) for item in node.bases),
         )
 
     def _function_entity(
@@ -94,6 +96,7 @@ class PythonLanguageAdapter:
             parameters=tuple(parameters),
             decorators=tuple(self._expr_text(item, source) for item in node.decorator_list),
             calls=self._function_calls(node),
+            visibility=self._visibility(node.name),
         )
 
     @classmethod
@@ -127,6 +130,14 @@ class PythonLanguageAdapter:
         for statement in node.body:
             visitor.visit(statement)
         return tuple(dict.fromkeys(calls))
+
+    @staticmethod
+    def _visibility(name: str) -> Visibility:
+        if name.startswith("__") and not name.endswith("__"):
+            return Visibility.PRIVATE
+        if name.startswith("_") and not (name.startswith("__") and name.endswith("__")):
+            return Visibility.PROTECTED
+        return Visibility.PUBLIC
 
     @staticmethod
     def _expr_text(node: ast.AST, source: str) -> str:
