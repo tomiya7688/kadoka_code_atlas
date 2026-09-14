@@ -1,0 +1,9 @@
+{
+  "renderer": "mermaid",
+  "generator_options": {
+    "sequence_diagram": {
+      "show_duplicate_calls": true,
+      "show_returns": false
+    }
+  }
+}
