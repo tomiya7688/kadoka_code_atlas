@@ -11,9 +11,11 @@ from Src.data.project_files import detect_language, discover_supported_files
 from Src.evaluators import evaluate_ci
 from Src.generators import CommentGenerator, generate_call_graph_mermaid, rows, to_csv, to_markdown
 from Src.generators.class_diagram import ClassDiagramOptions, build_class_diagram_bundle
+from Src.generators.sequence_diagram import build_sequence_diagram_bundle
 from Src.languages.python import PythonLanguageAdapter
 from Src.renderers import render_ci_workflow
 from Src.renderers.mermaid_class_diagram import render_class_diagram
+from Src.renderers.mermaid_sequence_diagram import render_sequence_diagram
 
 
 @dataclass(frozen=True, slots=True)
@@ -116,6 +118,25 @@ class ApplicationService:
         )
         outputs = tuple(
             GeneratedOutput(diagram.name, render_class_diagram(diagram), "mermaid")
+            for diagram in bundle.diagrams
+        )
+        return DiagramSetResult(outputs, bundle.statistics)
+
+    def generate_sequence_diagrams(
+        self,
+        request: SourceAnalysisRequest,
+        *,
+        fan_in_threshold: int = 3,
+        max_depth: int = 8,
+    ) -> DiagramSetResult:
+        module = self._python_module(request)
+        bundle = build_sequence_diagram_bundle(
+            module,
+            fan_in_threshold=fan_in_threshold,
+            max_depth=max_depth,
+        )
+        outputs = tuple(
+            GeneratedOutput(diagram.name, render_sequence_diagram(diagram), "mermaid")
             for diagram in bundle.diagrams
         )
         return DiagramSetResult(outputs, bundle.statistics)
