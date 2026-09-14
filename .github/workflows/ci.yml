@@ -1,0 +1,60 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        python-version: ["3.11", "3.12", "3.13"]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install project and test tooling
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e ".[test]"
+
+      - name: Compile Python sources
+        run: python -m compileall -q app.py Src tools tests
+
+      - name: Run full test suite
+        run: python -m pytest
+
+      - name: Install UPD Commander Checker
+        run: python -m pip install -r tools/requirements-upd.txt
+
+      - name: Check UPD Commander policy
+        run: upd-commander-check .
+
+      - name: Check architecture policy
+        run: python tools/context_tool.py policy-check
+
+      - name: Launch smoke test
+        run: python app.py --version
+
+      - name: Self-analysis smoke summary
+        if: matrix.python-version == '3.12'
+        run: python tools/self_analysis.py . > self-analysis-summary.json
+
+      - name: Smoke context indexes and bounded discovery
+        if: matrix.python-version == '3.12'
+        run: |
+          python tools/context_tool.py profile > /tmp/kca-profile.json
+          python tools/context_tool.py structure-index > /tmp/kca-structure.json
+          python tools/context_tool.py doc-index > /tmp/kca-doc-index.json
+          python tools/context_tool.py role-map > /tmp/kca-role-map.json
+          python tools/context_tool.py truth-candidates > /tmp/kca-truth.json
+          python tools/context_tool.py search "Common IR" --max-results 5 > /tmp/kca-search.json
+          python tools/context_tool.py path-find "*.py" --max-results 5 > /tmp/kca-paths.json
