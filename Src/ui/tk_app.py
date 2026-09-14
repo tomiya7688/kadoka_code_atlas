@@ -46,17 +46,22 @@ class AtlasTkApp:
         self.last_diagram_set: DiagramSetResult | None = None
         self.last_diagram_category: str | None = None
 
+        sequence_settings = self.service.sequence_diagram_settings()
         self.path_var = tk.StringVar(value="No file or folder selected")
         self.language_var = tk.StringVar(value="Language: -")
         self.operation_var = tk.StringVar(value=_OPERATION_COMMENTS)
         self.status_var = tk.StringVar(value="Select a source file or project folder.")
+        self.sequence_duplicate_var = tk.BooleanVar(
+            value=sequence_settings["show_duplicate_calls"]
+        )
+        self.sequence_returns_var = tk.BooleanVar(value=sequence_settings["show_returns"])
 
         self._build_window()
 
     def _build_window(self) -> None:
         self.root.title(PROJECT_NAME)
-        self.root.geometry("1100x700")
-        self.root.minsize(820, 520)
+        self.root.geometry("1100x740")
+        self.root.minsize(820, 560)
 
         outer = ttk.Frame(self.root, padding=10)
         outer.pack(fill=tk.BOTH, expand=True)
@@ -68,7 +73,7 @@ class AtlasTkApp:
         ttk.Button(chooser, text="Open Folder", command=self.open_folder).pack(side=tk.LEFT, padx=(8, 0))
 
         controls = ttk.Frame(outer)
-        controls.pack(fill=tk.X, pady=(10, 8))
+        controls.pack(fill=tk.X, pady=(10, 6))
         ttk.Label(controls, textvariable=self.language_var).pack(side=tk.LEFT)
         ttk.Label(controls, text="Operation:").pack(side=tk.LEFT, padx=(18, 6))
         operation = ttk.Combobox(
@@ -81,6 +86,23 @@ class AtlasTkApp:
         operation.pack(side=tk.LEFT)
         ttk.Button(controls, text="Run", command=self.run_selected).pack(side=tk.LEFT, padx=(8, 0))
         ttk.Button(controls, text="Save Result", command=self.save_result).pack(side=tk.LEFT, padx=(8, 0))
+
+        sequence_settings = ttk.Labelframe(outer, text="Sequence diagram settings", padding=6)
+        sequence_settings.pack(fill=tk.X, pady=(0, 8))
+        ttk.Checkbutton(
+            sequence_settings,
+            text="Show duplicate calls",
+            variable=self.sequence_duplicate_var,
+        ).pack(side=tk.LEFT)
+        ttk.Checkbutton(
+            sequence_settings,
+            text="Show return messages",
+            variable=self.sequence_returns_var,
+        ).pack(side=tk.LEFT, padx=(18, 0))
+        ttk.Label(
+            sequence_settings,
+            text="Cycles are always excluded from sequence diagrams.",
+        ).pack(side=tk.LEFT, padx=(18, 0))
 
         pane = ttk.Panedwindow(outer, orient=tk.HORIZONTAL)
         pane.pack(fill=tk.BOTH, expand=True)
@@ -194,7 +216,11 @@ class AtlasTkApp:
                 content = self._diagram_set_text(diagrams)
                 result_format = "mermaid-bundle"
             elif operation == _OPERATION_SEQUENCE_DIAGRAM:
-                diagrams = self.service.generate_sequence_diagrams(SourceAnalysisRequest(path, language))
+                diagrams = self.service.generate_sequence_diagrams(
+                    SourceAnalysisRequest(path, language),
+                    show_duplicate_calls=self.sequence_duplicate_var.get(),
+                    show_returns=self.sequence_returns_var.get(),
+                )
                 self.last_diagram_set = diagrams
                 self.last_diagram_category = "sequence_diagrams"
                 content = self._diagram_set_text(diagrams)
@@ -270,8 +296,8 @@ class AtlasTkApp:
         self.status_var.set(f"Saved result to {selected}")
 
 
-def launch_gui() -> None:
+def launch_gui(service: ApplicationService | None = None) -> None:
     """Start the Tkinter desktop application."""
     root = tk.Tk()
-    AtlasTkApp(root)
+    AtlasTkApp(root, service)
     root.mainloop()
