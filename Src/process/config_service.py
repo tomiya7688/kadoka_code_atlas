@@ -40,6 +40,7 @@ def default_capabilities() -> tuple[Capability, ...]:
         Capability("package_diagram", "generator"),
         Capability("component_diagram", "generator"),
         Capability("deployment_diagram", "generator"),
+        Capability("timing_chart", "generator"),
         Capability("activity_diagram", "generator"),
         Capability("ci", "generator"),
         Capability("responsibility", "generator", ()),

@@ -80,3 +80,19 @@ def test_deployment_cli_writes_diagram_folder():
         diagrams = list((output / "deployment_diagrams").glob("*.mmd"))
         assert diagrams
         assert any("postgres" in path.read_text(encoding="utf-8") for path in diagrams)
+
+
+def test_timing_cli_writes_timing_chart_folder():
+    with TemporaryDirectory() as folder:
+        root = Path(folder)
+        source = root / "sample.py"
+        output = root / "output"
+        source.write_text(
+            "async def load():\n    await fetch()\n",
+            encoding="utf-8",
+        )
+
+        assert main(["timing", str(source), "--output-dir", str(output)]) == 0
+        diagrams = list((output / "timing_charts").glob("*.mmd"))
+        assert len(diagrams) == 1
+        assert "await fetch" in diagrams[0].read_text(encoding="utf-8")
