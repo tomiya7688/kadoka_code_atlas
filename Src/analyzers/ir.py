@@ -84,3 +84,4 @@ class ModuleIR:
     entities: list[CodeEntity] = field(default_factory=list)
     objects: list[ObjectInstanceIR] = field(default_factory=list)
     state_machines: list[StateMachineIR] = field(default_factory=list)
+    imports: tuple[str, ...] = ()
