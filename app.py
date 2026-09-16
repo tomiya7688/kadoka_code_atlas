@@ -97,7 +97,10 @@ def main(argv: list[str] | None = None) -> int:
     if args.output and args.in_place:
         parser.error("--output and --in-place cannot be combined")
     path = Path(args.source)
-    result = service.generate_comments(CommentRequest(path, args.language or path.suffix))
+    language = args.language or service.detect_language(path)
+    if language == "unknown":
+        parser.error(f"unsupported source file type: {path.suffix or path.name}")
+    result = service.generate_comments(CommentRequest(path, language))
     if args.in_place:
         write_text(path, result.content)
     elif args.output:

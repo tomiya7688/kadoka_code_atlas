@@ -1,5 +1,8 @@
 from pathlib import Path
 from tempfile import TemporaryDirectory
+
+import pytest
+
 from app import main
 
 
@@ -18,6 +21,38 @@ def test_comment_cli_in_place():
         source.write_text("def load_config():\n    return {}\n", encoding="utf-8")
         assert main(["comment", str(source), "--in-place"]) == 0
         assert "# Retrieves config." in source.read_text(encoding="utf-8")
+
+
+@pytest.mark.parametrize("extension", [".cpp", ".cc", ".cxx", ".hpp", ".hxx"])
+def test_comment_cli_uses_shared_cpp_language_detection(extension: str):
+    with TemporaryDirectory() as folder:
+        source = Path(folder) / f"sample{extension}"
+        output = Path(folder) / f"annotated{extension}"
+        source.write_text("int load_config() { return 0; }\n", encoding="utf-8")
+
+        assert main(["comment", str(source), "--output", str(output)]) == 0
+        assert output.exists()
+
+
+def test_comment_cli_explicit_language_overrides_extension():
+    with TemporaryDirectory() as folder:
+        source = Path(folder) / "sample.txt"
+        output = Path(folder) / "annotated.py"
+        source.write_text("def load_config():\n    return {}\n", encoding="utf-8")
+
+        assert main(["comment", str(source), "--language", "python", "--output", str(output)]) == 0
+        assert "# Retrieves config." in output.read_text(encoding="utf-8")
+
+
+def test_comment_cli_rejects_unknown_extension_without_override():
+    with TemporaryDirectory() as folder:
+        source = Path(folder) / "sample.unknown"
+        source.write_text("hello\n", encoding="utf-8")
+
+        with pytest.raises(SystemExit) as error:
+            main(["comment", str(source)])
+
+        assert error.value.code == 2
 
 
 def test_ci_cli_writes_mermaid_output_file():
