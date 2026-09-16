@@ -22,6 +22,7 @@ _OPERATION_CLASS_DIAGRAM = "Class diagrams (Mermaid)"
 _OPERATION_OBJECT_DIAGRAM = "Object diagrams (Mermaid)"
 _OPERATION_SEQUENCE_DIAGRAM = "Sequence diagrams (Mermaid)"
 _OPERATION_COMMUNICATION_DIAGRAM = "Communication diagrams (Mermaid)"
+_OPERATION_STATE_DIAGRAM = "State diagrams (Mermaid)"
 _OPERATION_RESPONSIBILITY = "Class responsibility tables"
 _OPERATION_DESIGN_QUALITY = "Design quality report"
 _OPERATION_CI = "GitHub Actions CI graph"
@@ -32,6 +33,7 @@ _OPERATIONS = (
     _OPERATION_OBJECT_DIAGRAM,
     _OPERATION_SEQUENCE_DIAGRAM,
     _OPERATION_COMMUNICATION_DIAGRAM,
+    _OPERATION_STATE_DIAGRAM,
     _OPERATION_RESPONSIBILITY,
     _OPERATION_DESIGN_QUALITY,
     _OPERATION_CI,
@@ -189,6 +191,7 @@ class AtlasTkApp:
             _OPERATION_OBJECT_DIAGRAM,
             _OPERATION_SEQUENCE_DIAGRAM,
             _OPERATION_COMMUNICATION_DIAGRAM,
+            _OPERATION_STATE_DIAGRAM,
             _OPERATION_RESPONSIBILITY,
             _OPERATION_DESIGN_QUALITY,
         }:
@@ -247,6 +250,14 @@ class AtlasTkApp:
                 )
                 self.last_diagram_set = outputs
                 self.last_diagram_category = "communication_diagrams"
+                content = self._output_set_text(outputs)
+                result_format = "mermaid-bundle"
+            elif operation == _OPERATION_STATE_DIAGRAM:
+                outputs = self.service.generate_state_diagrams(
+                    SourceAnalysisRequest(path, language)
+                )
+                self.last_diagram_set = outputs
+                self.last_diagram_category = "state_diagrams"
                 content = self._output_set_text(outputs)
                 result_format = "mermaid-bundle"
             elif operation == _OPERATION_RESPONSIBILITY:
