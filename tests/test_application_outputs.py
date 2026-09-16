@@ -64,6 +64,29 @@ def test_application_service_generates_and_saves_partitioned_class_diagrams():
         assert "classDiagram" in paths[0].read_text(encoding="utf-8")
 
 
+def test_application_service_generates_and_saves_object_diagrams():
+    with TemporaryDirectory() as folder:
+        root = Path(folder)
+        source = root / "sample.py"
+        source.write_text(
+            "class Repo: pass\nclass Service: pass\n\ndef build():\n"
+            "    repo = Repo()\n    service = Service(name='api')\n    service.repo = repo\n",
+            encoding="utf-8",
+        )
+        service = ApplicationService()
+
+        result = service.generate_object_diagrams(SourceAnalysisRequest(source, "python"))
+        paths = service.save_diagram_set(root / "output", result, category="object_diagrams")
+
+        assert result.outputs
+        assert all(output.format == "mermaid" for output in result.outputs)
+        assert all(path.parent.name == "object_diagrams" for path in paths)
+        assert all(path.suffix == ".mmd" and path.is_file() for path in paths)
+        content = paths[0].read_text(encoding="utf-8")
+        assert "service : Service" in content
+        assert "repo : Repo" in content
+
+
 def test_application_service_generates_and_saves_sequence_diagrams():
     with TemporaryDirectory() as folder:
         root = Path(folder)
