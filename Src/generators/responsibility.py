@@ -12,6 +12,7 @@ from Src.analyzers.class_relations import ClassRelationGraph, build_class_relati
 from Src.analyzers.ir import CodeEntity, ModuleIR
 from Src.analyzers.ir_queries import classes, qualified_name
 from Src.analyzers.partition import partition_graph
+from Src.generators.output_names import stable_output_name
 
 
 @dataclass(frozen=True, slots=True)
@@ -103,9 +104,14 @@ def build_responsibility_table_bundle(
         selected = tuple(by_name[name] for name in series if name in by_name)
         if not selected:
             continue
+        root = selected[0].class_name
         tables.append(
             ResponsibilityTable(
-                name=f"series_{index}_{_slug(selected[0].class_name)}",
+                name=stable_output_name(
+                    f"series_{index}",
+                    root,
+                    fallback="responsibility",
+                ),
                 rows=selected,
             )
         )
@@ -116,7 +122,7 @@ def build_responsibility_table_bundle(
             continue
         tables.append(
             ResponsibilityTable(
-                name=f"shared_{_slug(shared)}",
+                name=stable_output_name("shared", shared, fallback="responsibility"),
                 rows=(row,),
             )
         )
@@ -128,8 +134,3 @@ def partitions(module: ModuleIR) -> list[list[ResponsibilityRow]]:
     """Compatibility helper returning the shared partitioner's grouped rows."""
     bundle = build_responsibility_table_bundle(module)
     return [list(table.rows) for table in bundle.tables]
-
-
-def _slug(value: str) -> str:
-    result = "".join(character if character.isalnum() else "_" for character in value)
-    return result.strip("_") or "responsibility"
