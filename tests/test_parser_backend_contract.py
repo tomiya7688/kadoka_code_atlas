@@ -1,5 +1,7 @@
+from Src.analyzers.ir import ModuleIR
 from Src.languages.backend import (
     PARSER_BACKEND_CONTRACT_VERSION,
+    ParserBackend,
     ParserBackendDescriptor,
     ParserBackendError,
     ParserBackendFailure,
@@ -18,6 +20,22 @@ def test_parser_backend_contract_version_is_stable_v1() -> None:
 
     assert PARSER_BACKEND_CONTRACT_VERSION == "1"
     assert descriptor.contract_version == "1"
+
+
+def test_parser_backend_returns_common_ir() -> None:
+    class FakeBackend:
+        descriptor = ParserBackendDescriptor(
+            backend_id="fake-python",
+            language="python",
+            kind=ParserBackendKind.IN_PROCESS,
+        )
+
+        def parse(self, source: str, path: str | None = None) -> ModuleIR:
+            return ModuleIR(language="python")
+
+    backend: ParserBackend = FakeBackend()
+
+    assert isinstance(backend.parse("value = 1\n"), ModuleIR)
 
 
 def test_parser_backend_failure_kinds_match_wire_contract() -> None:
