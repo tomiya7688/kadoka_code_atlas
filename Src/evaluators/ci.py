@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from Src.models.ci import CIWorkflow
+from Src.models.ci import CIJob, CIStep, CIWorkflow
 
 
 @dataclass(frozen=True, slots=True)
@@ -14,12 +14,36 @@ class CIEvaluationFinding:
     message: str
 
 
+def _step_text_value(step: CIStep) -> str:
+    return " ".join(filter(None, (step.name, step.command, step.action))).lower()
+
+
 def _step_text(workflow: CIWorkflow) -> list[tuple[str, str]]:
     return [
-        (job.name, " ".join(filter(None, (step.name, step.command, step.action))).lower())
+        (job.name, _step_text_value(step))
         for job in workflow.jobs
         for step in job.steps
     ]
+
+
+def _is_test_step(step: CIStep) -> bool:
+    text = _step_text_value(step)
+    return any(token in text for token in ("test", "pytest", "unittest"))
+
+
+def _is_build_step(step: CIStep) -> bool:
+    text = _step_text_value(step)
+    return any(token in text for token in ("build", "package", "compile"))
+
+
+def _has_test_before_build(job: CIJob) -> bool:
+    seen_test = False
+    for step in job.steps:
+        if _is_test_step(step):
+            seen_test = True
+        if _is_build_step(step):
+            return seen_test
+    return False
 
 
 def evaluate_ci(workflow: CIWorkflow) -> tuple[CIEvaluationFinding, ...]:
@@ -32,11 +56,14 @@ def evaluate_ci(workflow: CIWorkflow) -> tuple[CIEvaluationFinding, ...]:
 
     build_jobs = {job for job, text in steps if any(token in text for token in ("build", "package", "compile"))}
     for job in workflow.jobs:
-        if job.name in build_jobs and test_jobs and not set(job.needs) & test_jobs:
+        if job.name not in build_jobs or not test_jobs:
+            continue
+        depends_on_test_job = bool(set(job.needs) & test_jobs)
+        if not depends_on_test_job and not _has_test_before_build(job):
             findings.append(CIEvaluationFinding(
                 "build-without-test-dependency",
                 "warning",
-                f"Build job '{job.name}' does not depend on a test job.",
+                f"Build job '{job.name}' is not preceded by tests in the same job and does not depend on a test job.",
             ))
 
     commands: dict[str, list[str]] = {}
