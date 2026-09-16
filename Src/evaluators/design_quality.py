@@ -150,7 +150,7 @@ def _cycle_findings(
             severity="warning",
             subject=" -> ".join(cycle),
             evidence=f"Detected cycle with {max(len(cycle) - 1, 1)} edge(s).",
-            interpretation=f"The {scope} contains a circular dependency path.",
+            interpretation=f"The {scope} contains a dependency cycle.",
             note="Some recursive algorithms are intentional; dependency cycles still deserve explicit review.",
         )
         for cycle in cycles
