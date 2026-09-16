@@ -367,9 +367,13 @@ class ApplicationService:
             "source": ".txt",
         }
         paths: list[Path] = []
+        seen: set[Path] = set()
         for output in result.outputs:
             extension = extensions.get(output.format, ".txt")
             path = target / f"{output.name}{extension}"
+            if path in seen:
+                raise ValueError(f"Duplicate generated output path: {path}")
+            seen.add(path)
             write_text(path, output.content)
             paths.append(path)
         return tuple(paths)
