@@ -14,6 +14,7 @@ from Src.process.application import (
     ProjectAnalysisRequest,
     SourceAnalysisRequest,
 )
+from Src.process.deployment_service import DeploymentAnalysisRequest, DeploymentService
 
 PROJECT_NAME = "Kadoka Code Atlas"
 
@@ -26,6 +27,7 @@ _OPERATION_COMMUNICATION_DIAGRAM = "Communication diagrams (Mermaid)"
 _OPERATION_STATE_DIAGRAM = "State diagrams (Mermaid)"
 _OPERATION_PACKAGE_DIAGRAM = "Package diagrams (Mermaid)"
 _OPERATION_COMPONENT_DIAGRAM = "Component diagrams (Mermaid)"
+_OPERATION_DEPLOYMENT_DIAGRAM = "Deployment diagrams (Mermaid)"
 _OPERATION_RESPONSIBILITY = "Class responsibility tables"
 _OPERATION_DESIGN_QUALITY = "Design quality report"
 _OPERATION_CI = "GitHub Actions CI graph"
@@ -39,6 +41,7 @@ _OPERATIONS = (
     _OPERATION_STATE_DIAGRAM,
     _OPERATION_PACKAGE_DIAGRAM,
     _OPERATION_COMPONENT_DIAGRAM,
+    _OPERATION_DEPLOYMENT_DIAGRAM,
     _OPERATION_RESPONSIBILITY,
     _OPERATION_DESIGN_QUALITY,
     _OPERATION_CI,
@@ -46,17 +49,18 @@ _OPERATIONS = (
 
 
 class AtlasTkApp:
-    """Thin Tkinter front end over :class:`ApplicationService`."""
+    """Thin Tkinter front end over application services."""
 
     def __init__(self, root: tk.Tk, service: ApplicationService | None = None) -> None:
         self.root = root
         self.service = service or ApplicationService()
+        self.deployment_service = DeploymentService()
         self.base_path: Path | None = None
         self.files: list[Path] = []
         self.current_file: Path | None = None
         self.last_result = ""
         self.last_format = "text"
-        self.last_diagram_set: DiagramSetResult | None = None
+        self.last_diagram_set: object | None = None
         self.last_diagram_category: str | None = None
 
         sequence_settings = self.service.sequence_diagram_settings()
@@ -68,13 +72,14 @@ class AtlasTkApp:
             value=sequence_settings["show_duplicate_calls"]
         )
         self.sequence_returns_var = tk.BooleanVar(value=sequence_settings["show_returns"])
+        self.deployment_mode_var = tk.StringVar(value="full")
 
         self._build_window()
 
     def _build_window(self) -> None:
         self.root.title(PROJECT_NAME)
-        self.root.geometry("1100x740")
-        self.root.minsize(820, 560)
+        self.root.geometry("1100x780")
+        self.root.minsize(820, 600)
 
         outer = ttk.Frame(self.root, padding=10)
         outer.pack(fill=tk.BOTH, expand=True)
@@ -101,7 +106,7 @@ class AtlasTkApp:
         ttk.Button(controls, text="Save Result", command=self.save_result).pack(side=tk.LEFT, padx=(8, 0))
 
         sequence_settings = ttk.Labelframe(outer, text="Sequence diagram settings", padding=6)
-        sequence_settings.pack(fill=tk.X, pady=(0, 8))
+        sequence_settings.pack(fill=tk.X, pady=(0, 6))
         ttk.Checkbutton(
             sequence_settings,
             text="Show duplicate calls",
@@ -115,6 +120,21 @@ class AtlasTkApp:
         ttk.Label(
             sequence_settings,
             text="Cycles are always excluded from sequence diagrams.",
+        ).pack(side=tk.LEFT, padx=(18, 0))
+
+        deployment_settings = ttk.Labelframe(outer, text="Deployment diagram settings", padding=6)
+        deployment_settings.pack(fill=tk.X, pady=(0, 8))
+        ttk.Label(deployment_settings, text="Mode:").pack(side=tk.LEFT)
+        ttk.Combobox(
+            deployment_settings,
+            textvariable=self.deployment_mode_var,
+            values=("simple", "full"),
+            state="readonly",
+            width=10,
+        ).pack(side=tk.LEFT, padx=(6, 0))
+        ttk.Label(
+            deployment_settings,
+            text="Simple: source dependencies only / Full: + Docker, Compose and Kubernetes",
         ).pack(side=tk.LEFT, padx=(18, 0))
 
         pane = ttk.Panedwindow(outer, orient=tk.HORIZONTAL)
@@ -162,7 +182,9 @@ class AtlasTkApp:
         files = self.service.discover_supported_files(root)
         self._load_paths(root, files)
         if not files:
-            self.status_var.set("No supported source files were found in the selected folder.")
+            self.status_var.set(
+                "No supported source files were found. Deployment analysis can still inspect project configuration."
+            )
 
     def _load_paths(self, base_path: Path, files: list[Path]) -> None:
         self.base_path = base_path
@@ -188,7 +210,7 @@ class AtlasTkApp:
         self.current_file = self.files[index]
         language = self.service.detect_language(self.current_file)
         self.language_var.set(f"Language: {language}")
-        if language == "yaml":
+        if language == "yaml" and self.operation_var.get() != _OPERATION_DEPLOYMENT_DIAGRAM:
             self.operation_var.set(_OPERATION_CI)
         elif language != "python" and self.operation_var.get() in {
             _OPERATION_CALL_GRAPH,
@@ -205,20 +227,38 @@ class AtlasTkApp:
             self.operation_var.set(_OPERATION_COMMENTS)
 
     def run_selected(self) -> None:
-        if self.current_file is None:
+        operation = self.operation_var.get()
+        project_operation = operation == _OPERATION_DEPLOYMENT_DIAGRAM
+        if self.current_file is None and not (
+            project_operation and self.base_path is not None and self.base_path.is_dir()
+        ):
             messagebox.showinfo(PROJECT_NAME, "Select a source file first.")
             return
 
-        path = self.current_file
-        language = self.service.detect_language(path)
-        operation = self.operation_var.get()
+        path = self.current_file or self.base_path
+        if path is None:
+            return
+        language = self.service.detect_language(path) if path.is_file() else "project"
         self.status_var.set(f"Running {operation} for {path.name}...")
         self.root.update_idletasks()
         self.last_diagram_set = None
         self.last_diagram_category = None
 
         try:
-            if operation == _OPERATION_COMMENTS:
+            if operation == _OPERATION_DEPLOYMENT_DIAGRAM:
+                if self.base_path is None or not self.base_path.is_dir():
+                    raise ValueError("Deployment diagrams require opening a project folder.")
+                outputs = self.deployment_service.generate(
+                    DeploymentAnalysisRequest(
+                        self.base_path,
+                        self.deployment_mode_var.get(),
+                    )
+                )
+                self.last_diagram_set = outputs
+                self.last_diagram_category = "deployment_diagrams"
+                content = self._output_set_text(outputs)
+                result_format = "mermaid-bundle"
+            elif operation == _OPERATION_COMMENTS:
                 if language == "yaml":
                     raise ValueError("Comment generation is not available for YAML files.")
                 result = self.service.generate_comments(CommentRequest(path, language))
@@ -321,11 +361,12 @@ class AtlasTkApp:
         self.status_var.set(f"Completed: {operation} ({result_format}).")
 
     @staticmethod
-    def _output_set_text(result: DiagramSetResult) -> str:
-        if not result.outputs:
+    def _output_set_text(result: object) -> str:
+        outputs = getattr(result, "outputs", ())
+        if not outputs:
             return "No outputs were generated.\n"
         sections = []
-        for output in result.outputs:
+        for output in outputs:
             if output.format == "mermaid":
                 header = f"%% {output.name}"
             elif output.format == "markdown":
