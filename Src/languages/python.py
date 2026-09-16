@@ -9,6 +9,8 @@ from Src.analyzers.ir import (
     EntityKind,
     ModuleIR,
     ObjectInstanceIR,
+    StateMachineIR,
+    StateTransitionIR,
     Visibility,
 )
 from Src.analyzers.ir_queries import qualified_name
@@ -24,7 +26,13 @@ class PythonLanguageAdapter:
         entities: list[CodeEntity] = []
         self._collect(tree.body, source, entities, parent=None, parent_kind=None)
         objects = self._collect_objects(tree, source)
-        return ModuleIR(language=self.language, entities=entities, objects=objects)
+        state_machines = self._collect_state_machines(tree, source)
+        return ModuleIR(
+            language=self.language,
+            entities=entities,
+            objects=objects,
+            state_machines=state_machines,
+        )
 
     def _collect(
         self,
@@ -269,6 +277,271 @@ class PythonLanguageAdapter:
 
         recurse(tree.body, None)
         return result
+
+    @classmethod
+    def _collect_state_machines(
+        cls, tree: ast.Module, source: str
+    ) -> list[StateMachineIR]:
+        """Collect explicit enum-backed state machines without inferring flag states."""
+
+        enum_states: dict[str, tuple[str, ...]] = {}
+        enum_nodes: set[int] = set()
+        for node in ast.walk(tree):
+            if not isinstance(node, ast.ClassDef):
+                continue
+            bases = {cls._call_name(base).rsplit(".", 1)[-1] for base in node.bases}
+            if not bases & {"Enum", "IntEnum", "StrEnum", "Flag", "IntFlag"}:
+                continue
+            states: list[str] = []
+            for statement in node.body:
+                if isinstance(statement, ast.Assign):
+                    for target in statement.targets:
+                        if isinstance(target, ast.Name) and not target.id.startswith("_"):
+                            states.append(target.id)
+                elif isinstance(statement, ast.AnnAssign):
+                    if isinstance(statement.target, ast.Name) and not statement.target.id.startswith("_"):
+                        states.append(statement.target.id)
+            if states:
+                enum_states[node.name] = tuple(dict.fromkeys(states))
+                enum_nodes.add(id(node))
+
+        if not enum_states:
+            return []
+
+        result: list[StateMachineIR] = []
+
+        def class_methods(node: ast.ClassDef):
+            return [
+                item
+                for item in node.body
+                if isinstance(item, (ast.FunctionDef, ast.AsyncFunctionDef))
+            ]
+
+        def assignment_facts(method: ast.FunctionDef | ast.AsyncFunctionDef):
+            facts: list[tuple[str, str, str, int, ast.AST]] = []
+
+            class AssignmentVisitor(ast.NodeVisitor):
+                def visit_Assign(self, node: ast.Assign) -> None:
+                    member = cls._enum_member(node.value, enum_states)
+                    if member:
+                        enum_name, state = member
+                        for target in node.targets:
+                            variable = cls._state_target(target)
+                            if variable:
+                                facts.append((variable, enum_name, state, node.lineno, node))
+                    self.generic_visit(node)
+
+                def visit_AnnAssign(self, node: ast.AnnAssign) -> None:
+                    if node.value is not None:
+                        member = cls._enum_member(node.value, enum_states)
+                        variable = cls._state_target(node.target)
+                        if member and variable:
+                            enum_name, state = member
+                            facts.append((variable, enum_name, state, node.lineno, node))
+                    self.generic_visit(node)
+
+                def visit_FunctionDef(self, nested: ast.FunctionDef) -> None:
+                    return None
+
+                def visit_AsyncFunctionDef(self, nested: ast.AsyncFunctionDef) -> None:
+                    return None
+
+                def visit_ClassDef(self, nested: ast.ClassDef) -> None:
+                    return None
+
+                def visit_Lambda(self, nested: ast.Lambda) -> None:
+                    return None
+
+            visitor = AssignmentVisitor()
+            for statement in method.body:
+                visitor.visit(statement)
+            return facts
+
+        def scan_machine(
+            owner: str,
+            methods: list[ast.FunctionDef | ast.AsyncFunctionDef],
+            variable: str,
+            enum_name: str,
+        ) -> StateMachineIR:
+            initial_state: str | None = None
+            transitions: list[StateTransitionIR] = []
+            seen: set[tuple[str, str, str, str | None]] = set()
+
+            for method in methods:
+                if method.name == "__init__":
+                    for fact_variable, fact_enum, state, _line, _node in assignment_facts(method):
+                        if fact_variable == variable and fact_enum == enum_name:
+                            initial_state = initial_state or state
+
+                def add_transition(
+                    target: str,
+                    line: int,
+                    source_state: str | None,
+                    condition: str | None,
+                ) -> None:
+                    if method.name == "__init__" and source_state is None:
+                        return
+                    transition_source = source_state or "*"
+                    key = (transition_source, target, method.name, condition)
+                    if key in seen:
+                        return
+                    seen.add(key)
+                    transitions.append(
+                        StateTransitionIR(
+                            source=transition_source,
+                            target=target,
+                            line=line,
+                            event=method.name,
+                            condition=condition,
+                        )
+                    )
+
+                def scan_statements(
+                    statements: list[ast.stmt],
+                    source_state: str | None = None,
+                    condition: str | None = None,
+                ) -> None:
+                    for statement in statements:
+                        if isinstance(statement, ast.If):
+                            detected = cls._condition_source(
+                                statement.test, variable, enum_name, enum_states
+                            )
+                            condition_text = cls._expr_text(statement.test, source)
+                            scan_statements(
+                                statement.body,
+                                detected or source_state,
+                                condition_text if detected else condition,
+                            )
+                            scan_statements(statement.orelse, source_state, condition)
+                            continue
+                        if isinstance(statement, ast.Match):
+                            subject = cls._state_target(statement.subject)
+                            if subject == variable:
+                                for case in statement.cases:
+                                    detected = cls._match_state(case.pattern, enum_name, enum_states)
+                                    guard_text = (
+                                        cls._expr_text(case.guard, source)
+                                        if case.guard is not None
+                                        else None
+                                    )
+                                    scan_statements(
+                                        case.body,
+                                        detected or source_state,
+                                        guard_text or condition,
+                                    )
+                                continue
+                        if isinstance(statement, ast.Assign):
+                            member = cls._enum_member(statement.value, enum_states)
+                            if member and member[0] == enum_name:
+                                for target in statement.targets:
+                                    if cls._state_target(target) == variable:
+                                        add_transition(
+                                            member[1], statement.lineno, source_state, condition
+                                        )
+                        elif isinstance(statement, ast.AnnAssign) and statement.value is not None:
+                            member = cls._enum_member(statement.value, enum_states)
+                            if (
+                                member
+                                and member[0] == enum_name
+                                and cls._state_target(statement.target) == variable
+                            ):
+                                add_transition(member[1], statement.lineno, source_state, condition)
+                        for child in ast.iter_child_nodes(statement):
+                            if isinstance(child, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef, ast.Lambda)):
+                                continue
+
+                scan_statements(method.body)
+
+            states = enum_states[enum_name]
+            outgoing = {item.source for item in transitions if item.source != "*"}
+            incoming = {item.target for item in transitions}
+            terminal_states = tuple(
+                state for state in states if state in incoming and state not in outgoing
+            )
+            return StateMachineIR(
+                owner=owner,
+                state_type=enum_name,
+                state_variable=variable,
+                states=states,
+                transitions=tuple(transitions),
+                initial_state=initial_state,
+                terminal_states=terminal_states,
+            )
+
+        def recurse_classes(nodes: list[ast.stmt], parent: str | None = None) -> None:
+            for node in nodes:
+                if not isinstance(node, ast.ClassDef):
+                    continue
+                owner = cls._join_scope(parent, node.name)
+                if id(node) not in enum_nodes:
+                    methods = class_methods(node)
+                    candidates: dict[tuple[str, str], int] = {}
+                    for method in methods:
+                        for variable, enum_name, _state, _line, _raw in assignment_facts(method):
+                            candidates[(variable, enum_name)] = candidates.get((variable, enum_name), 0) + 1
+                    for variable, enum_name in sorted(candidates):
+                        result.append(scan_machine(owner, methods, variable, enum_name))
+                recurse_classes(node.body, owner)
+
+        recurse_classes(tree.body)
+        return result
+
+    @classmethod
+    def _enum_member(
+        cls, node: ast.AST, enum_states: dict[str, tuple[str, ...]]
+    ) -> tuple[str, str] | None:
+        if not isinstance(node, ast.Attribute):
+            return None
+        enum_ref = cls._call_name(node.value)
+        enum_name = enum_ref.rsplit(".", 1)[-1] if enum_ref else ""
+        if enum_name in enum_states and node.attr in enum_states[enum_name]:
+            return enum_name, node.attr
+        return None
+
+    @classmethod
+    def _condition_source(
+        cls,
+        node: ast.AST,
+        variable: str,
+        enum_name: str,
+        enum_states: dict[str, tuple[str, ...]],
+    ) -> str | None:
+        if not isinstance(node, ast.Compare) or len(node.ops) != 1 or len(node.comparators) != 1:
+            return None
+        if not isinstance(node.ops[0], (ast.Eq, ast.Is)):
+            return None
+        left_variable = cls._state_target(node.left)
+        right_variable = cls._state_target(node.comparators[0])
+        left_member = cls._enum_member(node.left, enum_states)
+        right_member = cls._enum_member(node.comparators[0], enum_states)
+        if left_variable == variable and right_member and right_member[0] == enum_name:
+            return right_member[1]
+        if right_variable == variable and left_member and left_member[0] == enum_name:
+            return left_member[1]
+        return None
+
+    @classmethod
+    def _match_state(
+        cls,
+        pattern: ast.pattern,
+        enum_name: str,
+        enum_states: dict[str, tuple[str, ...]],
+    ) -> str | None:
+        if isinstance(pattern, ast.MatchValue):
+            member = cls._enum_member(pattern.value, enum_states)
+            if member and member[0] == enum_name:
+                return member[1]
+        return None
+
+    @classmethod
+    def _state_target(cls, node: ast.AST) -> str:
+        if isinstance(node, ast.Name):
+            return node.id
+        if isinstance(node, ast.Attribute):
+            owner = cls._call_name(node.value)
+            if owner in {"self", "cls"}:
+                return node.attr
+        return ""
 
     @classmethod
     def _constructor_name(cls, node: ast.AST, class_names: set[str]) -> str:
