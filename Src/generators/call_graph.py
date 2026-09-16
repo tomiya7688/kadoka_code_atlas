@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from Src.analyzers.call_graph import CallEdge, CallGraph
+from Src.analyzers.call_graph import CallGraph
 from Src.analyzers.ir import ModuleIR
 from Src.analyzers.partition import partition_graph
 from Src.generators.output_names import stable_output_name
@@ -70,12 +70,12 @@ def build_call_graph_bundle(
                     root_name,
                     fallback="call_graph",
                 ),
-                CallGraph(edges=edges),
+                CallGraph(
+                    edges=edges,
+                    explicit_nodes=selected | boundary_targets,
+                ),
             )
         )
-        # CallGraph derives nodes from edges; preserve isolated/leaf nodes explicitly
-        # through a lightweight edge-free graph adapter when necessary.
-        diagrams[-1].graph._explicit_nodes = selected | boundary_targets  # type: ignore[attr-defined]
 
     for shared_node in partition.shared:
         edges = [
@@ -83,8 +83,7 @@ def build_call_graph_bundle(
             for edge in graph.edges
             if edge.callee == shared_node or edge.caller == shared_node
         ]
-        shared_graph = CallGraph(edges=edges)
-        shared_graph._explicit_nodes = {  # type: ignore[attr-defined]
+        explicit_nodes = {
             shared_node,
             *(edge.caller for edge in edges),
             *(edge.callee for edge in edges),
@@ -92,7 +91,7 @@ def build_call_graph_bundle(
         diagrams.append(
             CallGraphDiagram(
                 stable_output_name("shared", shared_node, fallback="call_graph"),
-                shared_graph,
+                CallGraph(edges=edges, explicit_nodes=explicit_nodes),
             )
         )
 
