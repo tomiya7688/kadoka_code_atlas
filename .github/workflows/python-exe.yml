@@ -5,6 +5,7 @@ on:
     paths:
       - "app.py"
       - "Src/**"
+      - "config/**"
       - "pyproject.toml"
       - "build_exe.bat"
       - ".github/workflows/python-exe.yml"
@@ -27,23 +28,33 @@ jobs:
       - name: Run tests
         run: py -3 -m pytest -q
 
-      - name: Build single-file EXE
+      - name: Build onedir app
         shell: cmd
         run: build_exe.bat
 
-      - name: Smoke test EXE
+      - name: Smoke test app
         shell: powershell
         run: |
-          $output = & .\dist\kadoka-code-atlas.exe --version
+          $exe = ".\dist\kadoka-code-atlas\kadoka-code-atlas.exe"
+          $config = ".\dist\kadoka-code-atlas\config\kadoka-code-atlas.json"
+          if (-not (Test-Path $exe)) {
+            Write-Error "EXE not found: $exe"
+            exit 1
+          }
+          if (-not (Test-Path $config)) {
+            Write-Error "Runtime config not found: $config"
+            exit 1
+          }
+          $output = & $exe --version
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           if ($output -notmatch "Kadoka Code Atlas") {
             Write-Error "Unexpected EXE output: $output"
             exit 1
           }
 
-      - name: Upload Windows EXE
+      - name: Upload Windows app directory
         uses: actions/upload-artifact@v4
         with:
           name: kadoka-code-atlas-windows-x64
-          path: dist/kadoka-code-atlas.exe
+          path: dist/kadoka-code-atlas/**
           if-no-files-found: error
