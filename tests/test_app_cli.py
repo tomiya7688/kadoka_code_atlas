@@ -120,3 +120,56 @@ class Window:
         diagrams = list((output / "use_case_diagrams").glob("*.mmd"))
         assert len(diagrams) == 1
         assert "Save" in diagrams[0].read_text(encoding="utf-8")
+
+
+def test_class_diagram_cli_writes_plantuml_folder():
+    with TemporaryDirectory() as folder:
+        root = Path(folder)
+        source = root / "sample.py"
+        output = root / "output"
+        source.write_text(
+            "class Base: pass\nclass Child(Base): pass\n",
+            encoding="utf-8",
+        )
+
+        assert main(
+            [
+                "class-diagram",
+                str(source),
+                "--renderer",
+                "plantuml",
+                "--output-dir",
+                str(output),
+            ]
+        ) == 0
+        diagrams = list((output / "class_diagrams").glob("*.puml"))
+        assert diagrams
+        assert diagrams[0].read_text(encoding="utf-8").startswith("@startuml\n")
+
+
+def test_sequence_diagram_cli_writes_plantuml_with_returns():
+    with TemporaryDirectory() as folder:
+        root = Path(folder)
+        source = root / "sample.py"
+        output = root / "output"
+        source.write_text(
+            "def main(): helper()\ndef helper(): pass\n",
+            encoding="utf-8",
+        )
+
+        assert main(
+            [
+                "sequence-diagram",
+                str(source),
+                "--renderer",
+                "plantuml",
+                "--show-returns",
+                "--output-dir",
+                str(output),
+            ]
+        ) == 0
+        diagrams = list((output / "sequence_diagrams").glob("*.puml"))
+        assert diagrams
+        content = diagrams[0].read_text(encoding="utf-8")
+        assert content.startswith("@startuml\n")
+        assert " --> " in content
