@@ -26,7 +26,6 @@ class Controller:
 
     def finish(self):
         pass
-
 def helper():
     leaf()
 def leaf():
@@ -105,6 +104,8 @@ def test_application_service_saves_communication_diagrams():
         )
 
         assert result.outputs
-        assert all(path.parent.name == "communication_diagrams" for path in paths)
+        assert all(path.parent.parent.name == "communication_diagrams" for path in paths)
+        assert all(path.parent.name.startswith("series_") for path in paths)
+        assert not list((root / "output" / "communication_diagrams").glob("*.mmd"))
         assert all(path.suffix == ".mmd" and path.is_file() for path in paths)
         assert "flowchart LR" in paths[0].read_text(encoding="utf-8")
