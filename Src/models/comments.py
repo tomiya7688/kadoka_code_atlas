@@ -1,4 +1,4 @@
-"""Intermediate representation for deterministic comment generation."""
+"""Canonical language-neutral models for comment-generation candidates."""
 
 from __future__ import annotations
 
@@ -21,7 +21,12 @@ class CommentTarget(str, Enum):
 
 @dataclass(frozen=True)
 class CommentCandidate:
-    """A comment proposed at a source line without modifying the source yet."""
+    """The single shared candidate contract used by all comment pipelines.
+
+    ``indent`` and ``line`` are source-rewrite metadata. ``text`` is the
+    proposed comment text supplied to the selected text backend or compatibility
+    rewriter; parser-specific AST objects never cross this boundary.
+    """
 
     target: CommentTarget
     name: str
@@ -32,7 +37,7 @@ class CommentCandidate:
 
 @dataclass(frozen=True)
 class ParsedSource:
-    """Language-neutral result returned by a language adapter."""
+    """Normalized comment-analysis result returned by a CommentAdapter."""
 
     language: str
     candidates: tuple[CommentCandidate, ...]
