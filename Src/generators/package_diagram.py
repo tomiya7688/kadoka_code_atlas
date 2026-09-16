@@ -7,6 +7,8 @@ from dataclasses import dataclass
 from Src.analyzers.package_dependencies import PackageDependencyGraph
 from Src.analyzers.partition import partition_graph
 from Src.generators.output_names import stable_output_name
+from Src.generators.series_layout import regular_placement, shared_placement
+from Src.models.output_layout import OutputPlacement
 
 
 @dataclass(frozen=True, slots=True)
@@ -27,7 +29,8 @@ class PackageDiagram:
 @dataclass(frozen=True, slots=True)
 class PackageDiagramBundle:
     diagrams: tuple[PackageDiagram, ...]
-    statistics: dict[str, int | tuple[int, ...]]
+    statistics: dict[str, int | float | tuple[int, ...]]
+    placements: tuple[OutputPlacement, ...] = ()
 
 
 def build_package_diagram_bundle(
@@ -38,13 +41,10 @@ def build_package_diagram_bundle(
     """Partition one dependency graph into normal and shared package diagrams."""
 
     partition = partition_graph(graph, fan_in_threshold=fan_in_threshold)
-    cycle_nodes = {
-        node
-        for cycle in graph.cycles()
-        for node in cycle
-    }
+    cycle_nodes = {node for cycle in graph.cycles() for node in cycle}
     isolated = set(graph.isolated_nodes())
     diagrams: list[PackageDiagram] = []
+    placements: list[OutputPlacement] = []
 
     def make(prefix: str, logical_name: str, nodes: set[str]) -> PackageDiagram:
         edges = tuple(
@@ -60,17 +60,26 @@ def build_package_diagram_bundle(
             isolated_nodes=tuple(sorted(nodes & isolated)),
         )
 
-    for index, series in enumerate(partition.series, start=1):
+    for series_index, series in enumerate(partition.series):
         nodes = set(series)
-        if nodes:
-            diagrams.append(make(f"series_{index}", series[0], nodes))
+        if not nodes:
+            continue
+        diagram = make(
+            f"series_{series_index + 1}",
+            partition.series_roots[series_index],
+            nodes,
+        )
+        diagrams.append(diagram)
+        placements.append(regular_placement(diagram.name, partition, series_index))
 
     for shared in partition.shared:
         nodes = {shared}
         nodes.update(item.caller for item in graph.edges if item.callee == shared)
         nodes.update(item.callee for item in graph.edges if item.caller == shared)
-        diagrams.append(make("shared", shared, nodes))
+        diagram = make("shared", shared, nodes)
+        diagrams.append(diagram)
+        placements.append(shared_placement(diagram.name, shared))
 
     statistics = dict(partition.statistics)
     statistics["isolated_node_count"] = len(isolated)
-    return PackageDiagramBundle(tuple(diagrams), statistics)
+    return PackageDiagramBundle(tuple(diagrams), statistics, tuple(placements))
