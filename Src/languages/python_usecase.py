@@ -96,15 +96,19 @@ class PythonUseCaseLanguageAdapter:
                 self.class_scope = previous
 
             def visit_Assign(self, node: ast.Assign) -> None:
+                handled = False
                 if isinstance(node.value, ast.Call):
                     for target in node.targets:
-                        self._widget_call(node.value, _expr(target))
-                self.generic_visit(node)
+                        handled = self._widget_call(node.value, _expr(target)) or handled
+                if not handled:
+                    self.generic_visit(node)
 
             def visit_AnnAssign(self, node: ast.AnnAssign) -> None:
+                handled = False
                 if isinstance(node.value, ast.Call):
-                    self._widget_call(node.value, _expr(node.target))
-                self.generic_visit(node)
+                    handled = self._widget_call(node.value, _expr(node.target))
+                if not handled:
+                    self.generic_visit(node)
 
             def visit_Call(self, node: ast.Call) -> None:
                 self._connect_call(node)
@@ -112,16 +116,16 @@ class PythonUseCaseLanguageAdapter:
                 self._widget_call(node, _expr(node.func).rsplit(".", 1)[-1])
                 self.generic_visit(node)
 
-            def _widget_call(self, call: ast.Call, component: str) -> None:
+            def _widget_call(self, call: ast.Call, component: str) -> bool:
                 widget = _expr(call.func).rsplit(".", 1)[-1]
                 if widget not in _WIDGET_NAMES:
-                    return
+                    return False
                 command = _keyword(call, "command")
                 if command is None:
-                    return
+                    return False
                 handler = _expr(command)
                 if not handler:
-                    return
+                    return False
                 add(
                     component=component,
                     event="command",
@@ -130,6 +134,7 @@ class PythonUseCaseLanguageAdapter:
                     label=_literal(_keyword(call, "text")),
                     scope=self.class_scope,
                 )
+                return True
 
             def _bind_call(self, call: ast.Call) -> None:
                 if not isinstance(call.func, ast.Attribute) or call.func.attr != "bind":
