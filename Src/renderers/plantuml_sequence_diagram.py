@@ -15,7 +15,7 @@ def _quote(value: str) -> str:
     return value.replace("\\", "\\\\").replace('"', '\\"').replace("\n", " ")
 
 
-def render_plantuml_sequence_diagram(diagram: SequenceDiagram) -> str:
+def render_sequence_diagram(diagram: SequenceDiagram) -> str:
     """Render a renderer-neutral sequence diagram as PlantUML."""
 
     aliases = {name: _alias(name) for name in diagram.participants}
@@ -32,3 +32,6 @@ def render_plantuml_sequence_diagram(diagram: SequenceDiagram) -> str:
 
     lines.append("@enduml")
     return "\n".join(lines) + "\n"
+
+
+render_plantuml_sequence_diagram = render_sequence_diagram
