@@ -15,8 +15,9 @@ if errorlevel 1 exit /b 1
 %PYTHON% -m PyInstaller --onedir --clean --name kadoka-code-atlas -y app.py
 if errorlevel 1 exit /b 1
 
-if exist "kadoka-code-atlas.example.json" (
-    copy /Y "kadoka-code-atlas.example.json" "dist\kadoka-code-atlas\kadoka-code-atlas.example.json" >nul
+if exist "config" (
+    if not exist "dist\kadoka-code-atlas\config" mkdir "dist\kadoka-code-atlas\config"
+    xcopy /E /I /Y "config\*" "dist\kadoka-code-atlas\config\" >nul
     if errorlevel 1 exit /b 1
 )
 
