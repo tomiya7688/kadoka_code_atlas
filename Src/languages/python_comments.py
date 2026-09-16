@@ -2,14 +2,18 @@
 
 from __future__ import annotations
 
-from Src.generators.comments import CommentCandidate
+from collections.abc import Sequence
+
+from Src.models import CommentCandidate
 
 
-def apply_python_comments(source: str, candidates: list[CommentCandidate]) -> str:
-    """Insert generated comments while preserving existing source text.
+def apply_python_comments(source: str, candidates: Sequence[CommentCandidate]) -> str:
+    """Insert canonical comment candidates while preserving existing source text.
 
     Candidates are applied from bottom to top so original line numbers stay valid.
     A nearby standalone comment suppresses insertion to avoid obvious duplicates.
+    This is a Python-specific compatibility rewriter; parsing and comment-text
+    generation remain separate concerns.
     """
 
     lines = source.splitlines(keepends=True)
@@ -24,7 +28,9 @@ def apply_python_comments(source: str, candidates: list[CommentCandidate]) -> st
         newline = default_newline
         if index < len(lines) and lines[index].endswith("\r\n"):
             newline = "\r\n"
-        indent = " " * candidate.indent
-        lines.insert(index, f"{indent}# {candidate.text}{newline}")
+        text = candidate.text
+        if not text.lstrip().startswith("#"):
+            text = f"# {text}"
+        lines.insert(index, f"{candidate.indent}{text}{newline}")
 
     return "".join(lines)
