@@ -3,10 +3,10 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-import re
 
 from Src.analyzers.package_dependencies import PackageDependencyGraph
 from Src.analyzers.partition import partition_graph
+from Src.generators.output_names import stable_output_name
 
 
 @dataclass(frozen=True, slots=True)
@@ -30,11 +30,6 @@ class PackageDiagramBundle:
     statistics: dict[str, int | tuple[int, ...]]
 
 
-def _safe_name(value: str) -> str:
-    normalized = re.sub(r"[^A-Za-z0-9_.-]+", "_", value).strip("_.-")
-    return normalized or "package"
-
-
 def build_package_diagram_bundle(
     graph: PackageDependencyGraph,
     *,
@@ -51,30 +46,30 @@ def build_package_diagram_bundle(
     isolated = set(graph.isolated_nodes())
     diagrams: list[PackageDiagram] = []
 
-    def make(name: str, nodes: set[str]) -> PackageDiagram:
+    def make(prefix: str, logical_name: str, nodes: set[str]) -> PackageDiagram:
         edges = tuple(
             PackageDiagramEdge(item.caller, item.callee)
             for item in graph.edges
             if item.caller in nodes and item.callee in nodes
         )
         return PackageDiagram(
-            name=_safe_name(name),
+            name=stable_output_name(prefix, logical_name, fallback="package"),
             nodes=tuple(sorted(nodes)),
             edges=edges,
             cycle_nodes=tuple(sorted(nodes & cycle_nodes)),
             isolated_nodes=tuple(sorted(nodes & isolated)),
         )
 
-    for series in partition.series:
+    for index, series in enumerate(partition.series, start=1):
         nodes = set(series)
         if nodes:
-            diagrams.append(make(f"series_{series[0]}", nodes))
+            diagrams.append(make(f"series_{index}", series[0], nodes))
 
     for shared in partition.shared:
         nodes = {shared}
         nodes.update(item.caller for item in graph.edges if item.callee == shared)
         nodes.update(item.callee for item in graph.edges if item.caller == shared)
-        diagrams.append(make(f"shared_{shared}", nodes))
+        diagrams.append(make("shared", shared, nodes))
 
     statistics = dict(partition.statistics)
     statistics["isolated_node_count"] = len(isolated)
