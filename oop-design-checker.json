@@ -1,0 +1,12 @@
+{
+  "ignoredPaths": [
+    "**/tests/**",
+    "**/build/**",
+    "**/dist/**",
+    "**/.dev/**",
+    "**/Generated/**",
+    "**/*.g.cs"
+  ],
+  "disabledRules": [],
+  "failureThreshold": "danger"
+}

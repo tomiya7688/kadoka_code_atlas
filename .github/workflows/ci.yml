@@ -32,7 +32,7 @@ jobs:
       - name: Run full test suite
         run: python -m pytest
 
-      - name: Install UPD Commander Checker
+      - name: Install latest UPD Commander Checker
         run: python -m pip install -r tools/requirements-upd.txt
 
       - name: Check UPD Commander policy
@@ -58,3 +58,52 @@ jobs:
           python tools/context_tool.py truth-candidates > /tmp/kca-truth.json
           python tools/context_tool.py search "Common IR" --max-results 5 > /tmp/kca-search.json
           python tools/context_tool.py path-find "*.py" --max-results 5 > /tmp/kca-paths.json
+
+  oop-design:
+    name: OOP design policy
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Detect C# product sources
+        id: csharp
+        shell: bash
+        run: |
+          if find . -type f -name '*.cs' \
+            -not -path './.git/*' \
+            -not -path './.dev/*' \
+            -not -path './build/*' \
+            -not -path './dist/*' \
+            -not -path './tests/*' \
+            -print -quit | grep -q .; then
+            echo "present=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "present=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::No C# product sources found; OOP Design Checker is installed as a CI gate and will run when C# sources are present."
+          fi
+
+      - name: Set up .NET 10
+        if: steps.csharp.outputs.present == 'true'
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Fetch latest OOP Design Checker
+        if: steps.csharp.outputs.present == 'true'
+        shell: bash
+        run: |
+          git clone --depth 1 --branch main https://github.com/tomiya7688/oop-design-checker.git "$RUNNER_TEMP/oop-design-checker"
+          echo "Using oop-design-checker $(git -C "$RUNNER_TEMP/oop-design-checker" rev-parse HEAD)"
+
+      - name: Check OOP design policy
+        if: steps.csharp.outputs.present == 'true'
+        shell: bash
+        run: |
+          dotnet run \
+            --project "$RUNNER_TEMP/oop-design-checker/src/frontends/cui/OopDesignChecker.Cui.csproj" \
+            -- . \
+            --config oop-design-checker.json \
+            --fail-on danger \
+            --format github
