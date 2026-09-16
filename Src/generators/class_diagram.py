@@ -4,11 +4,12 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from Src.analyzers.class_relations import ClassRelationGraph, build_class_relation_graph
+from Src.analyzers.class_relations import build_class_relation_graph
 from Src.analyzers.ir import EntityKind, ModuleIR, Visibility
 from Src.analyzers.ir_queries import classes, qualified_name
 from Src.analyzers.partition import partition_graph
 from Src.generators.output_names import stable_output_name
+from Src.generators.series_layout import regular_placement, shared_placement
 from Src.models.class_diagram import (
     ClassDiagram,
     ClassDiagramBundle,
@@ -16,6 +17,7 @@ from Src.models.class_diagram import (
     ClassNode,
     ClassRelation,
 )
+from Src.models.output_layout import OutputPlacement
 
 
 @dataclass(frozen=True, slots=True)
@@ -83,31 +85,44 @@ def build_class_diagram_bundle(
         return ClassRelation(edge.caller, edge.callee, edge.relation)
 
     diagrams: list[ClassDiagram] = []
-    for index, series in enumerate(partition.series, start=1):
+    placements: list[OutputPlacement] = []
+    for series_index, series in enumerate(partition.series):
         selected = set(series)
         relations = tuple(
             relation_model(edge)
             for edge in visible_relations
             if edge.caller in selected and edge.callee in selected
         )
-        root = series[0]
+        root = partition.series_roots[series_index]
+        name = stable_output_name(
+            f"series_{series_index + 1}",
+            root,
+            fallback="class",
+        )
         diagrams.append(
             ClassDiagram(
-                name=stable_output_name(f"series_{index}", root, fallback="class"),
-                nodes=tuple(node_model(name) for name in series),
+                name=name,
+                nodes=tuple(node_model(item) for item in series),
                 relations=relations,
             )
         )
+        placements.append(regular_placement(name, partition, series_index))
 
     for shared in partition.shared:
         incoming = [edge for edge in visible_relations if edge.callee == shared]
         selected = {shared, *(edge.caller for edge in incoming)}
+        name = stable_output_name("shared", shared, fallback="class")
         diagrams.append(
             ClassDiagram(
-                name=stable_output_name("shared", shared, fallback="class"),
-                nodes=tuple(node_model(name) for name in sorted(selected)),
+                name=name,
+                nodes=tuple(node_model(item) for item in sorted(selected)),
                 relations=tuple(relation_model(edge) for edge in incoming),
             )
         )
+        placements.append(shared_placement(name, shared))
 
-    return ClassDiagramBundle(tuple(diagrams), partition.statistics)
+    return ClassDiagramBundle(
+        tuple(diagrams),
+        partition.statistics,
+        tuple(placements),
+    )
