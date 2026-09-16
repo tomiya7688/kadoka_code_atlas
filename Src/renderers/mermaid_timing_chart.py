@@ -44,12 +44,12 @@ def render_timing_chart(chart: TimingChart) -> str:
             lines.append(f"    Note over p0: {event.order}. sync {detail}")
         elif event.kind == "timer":
             if target_id:
-                lines.append(f"    p0-) {target_id}: {event.order}. timer {detail}")
+                lines.append(f"    p0-){target_id}: {event.order}. timer {detail}")
             else:
                 lines.append(f"    Note over p0: {event.order}. timer {detail}")
         elif event.kind == "callback":
             if target_id:
-                lines.append(f"    p0-) {target_id}: {event.order}. callback {detail}")
+                lines.append(f"    p0-){target_id}: {event.order}. callback {detail}")
             else:
                 lines.append(f"    Note over p0: {event.order}. callback {detail}")
         elif event.kind == "periodic":
