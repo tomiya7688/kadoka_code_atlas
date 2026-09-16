@@ -56,29 +56,37 @@ def _resolve_relative(unit: ModuleDependencyUnit, reference: str) -> str:
     return ".".join(base)
 
 
+def resolve_module_reference(
+    unit: ModuleDependencyUnit,
+    reference: str,
+    known_names: set[str],
+) -> str | None:
+    """Resolve one normalized import reference against project module names."""
+
+    candidate = _resolve_relative(unit, reference) if reference.startswith(".") else reference
+    if candidate in known_names:
+        return candidate
+    parts = candidate.split(".")
+    for end in range(len(parts) - 1, 0, -1):
+        prefix = ".".join(parts[:end])
+        if prefix in known_names:
+            return prefix
+    return None
+
+
 def build_package_dependency_graph(
     units: list[ModuleDependencyUnit],
 ) -> PackageDependencyGraph:
     """Resolve normalized import references against modules present in one project."""
 
     known = {item.name: item for item in units}
+    known_names = set(known)
     edges: list[PackageDependencyEdge] = []
     seen: set[tuple[str, str]] = set()
 
-    def resolve(unit: ModuleDependencyUnit, reference: str) -> str | None:
-        candidate = _resolve_relative(unit, reference) if reference.startswith(".") else reference
-        if candidate in known:
-            return candidate
-        parts = candidate.split(".")
-        for end in range(len(parts) - 1, 0, -1):
-            prefix = ".".join(parts[:end])
-            if prefix in known:
-                return prefix
-        return None
-
     for unit in units:
         for reference in unit.imports:
-            target = resolve(unit, reference)
+            target = resolve_module_reference(unit, reference, known_names)
             if not target or target == unit.name:
                 continue
             key = (unit.name, target)
@@ -87,4 +95,4 @@ def build_package_dependency_graph(
             seen.add(key)
             edges.append(PackageDependencyEdge(*key))
 
-    return PackageDependencyGraph(set(known), edges)
+    return PackageDependencyGraph(known_names, edges)
