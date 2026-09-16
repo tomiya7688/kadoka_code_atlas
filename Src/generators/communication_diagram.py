@@ -57,7 +57,11 @@ def build_communication_diagram_bundle(
             )
         )
 
-    return CommunicationDiagramBundle(tuple(diagrams), sequence_bundle.statistics)
+    return CommunicationDiagramBundle(
+        tuple(diagrams),
+        sequence_bundle.statistics,
+        sequence_bundle.placements,
+    )
 
 
 def _message_orders(depths: tuple[int, ...]) -> tuple[str, ...]:
