@@ -56,6 +56,7 @@ Src/
   renderers/       # Mermaid / text / other formatting
   evaluators/      # design / code-quality evaluation
   languages/       # language-specific adapters
+config/            # runtime configuration and examples
 tests/             # automated evidence
 tools/             # Issue / PR / context helpers
 docs/              # explanations, current state, routing, feature specs
@@ -65,9 +66,24 @@ app.py             # application entry point
 
 現在の能力・既知制約は [`docs/current_state.md`](docs/current_state.md)、責務からファイルを探す場合は [`docs/responsibility_map.md`](docs/responsibility_map.md) を参照してください。
 
+## Runtime layout
+
+Windows配布物は PyInstaller `onedir` を使用します。設定や今後の外部リソースをEXE本体へ埋め込まず、配布ディレクトリ内で分離します。
+
+```text
+kadoka-code-atlas/
+  kadoka-code-atlas.exe
+  config/
+    kadoka-code-atlas.json
+    kadoka-code-atlas.example.json
+  _internal/
+```
+
+実行時設定は `config/kadoka-code-atlas.json` を読みます。PyInstaller版ではEXEのあるディレクトリを基準にし、ソース実行時もリポジトリの `config/` を基準にします。
+
 ## Sequence diagram settings
 
-ルートに `kadoka-code-atlas.json` を置くと起動時に読み込みます。設定例は `kadoka-code-atlas.example.json` を参照してください。
+`config/kadoka-code-atlas.json` を編集すると起動時に読み込みます。設定例は `config/kadoka-code-atlas.example.json` を参照してください。
 
 ```json
 {
