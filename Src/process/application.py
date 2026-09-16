@@ -13,6 +13,7 @@ from Src.generators import CommentGenerator, generate_call_graph_mermaid, rows, 
 from Src.generators.class_diagram import ClassDiagramOptions, build_class_diagram_bundle
 from Src.generators.communication_diagram import build_communication_diagram_bundle
 from Src.generators.object_diagram import build_object_diagram_bundle
+from Src.generators.responsibility import build_responsibility_table_bundle
 from Src.generators.sequence_diagram import SequenceDiagramOptions, build_sequence_diagram_bundle
 from Src.languages.python import PythonLanguageAdapter
 from Src.models.config import AtlasConfig
@@ -110,6 +111,31 @@ class ApplicationService:
         if normalized != "markdown":
             raise ValueError(f"Unsupported responsibility output format: {output_format}")
         return TextResult(to_markdown(table_rows), format="markdown")
+
+    def generate_responsibility_tables(
+        self,
+        request: SourceAnalysisRequest,
+        *,
+        fan_in_threshold: int = 3,
+        output_format: str = "markdown",
+    ) -> DiagramSetResult:
+        module = self._python_module(request)
+        normalized = output_format.lower()
+        if normalized not in {"markdown", "csv"}:
+            raise ValueError(f"Unsupported responsibility output format: {output_format}")
+        bundle = build_responsibility_table_bundle(
+            module,
+            fan_in_threshold=fan_in_threshold,
+        )
+        outputs = tuple(
+            GeneratedOutput(
+                table.name,
+                to_csv(table.rows) if normalized == "csv" else to_markdown(table.rows),
+                normalized,
+            )
+            for table in bundle.tables
+        )
+        return DiagramSetResult(outputs, bundle.statistics)
 
     def generate_class_diagrams(
         self,
@@ -234,9 +260,15 @@ class ApplicationService:
         category: str,
     ) -> tuple[Path, ...]:
         target = output_root / category
+        extensions = {
+            "mermaid": ".mmd",
+            "markdown": ".md",
+            "csv": ".csv",
+            "source": ".txt",
+        }
         paths: list[Path] = []
         for output in result.outputs:
-            extension = ".mmd" if output.format == "mermaid" else ".txt"
+            extension = extensions.get(output.format, ".txt")
             path = target / f"{output.name}{extension}"
             write_text(path, output.content)
             paths.append(path)
