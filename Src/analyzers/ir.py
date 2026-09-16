@@ -97,6 +97,19 @@ class TimingFlowIR:
 
 
 @dataclass(slots=True)
+class InputEventIR:
+    """Passive user-input to handler registration fact."""
+
+    actor: str
+    component: str
+    event: str
+    handler: str
+    line: int
+    label: str | None = None
+    scope: str | None = None
+
+
+@dataclass(slots=True)
 class ModuleIR:
     """Normalized representation of one source module/file."""
 
@@ -105,4 +118,5 @@ class ModuleIR:
     objects: list[ObjectInstanceIR] = field(default_factory=list)
     state_machines: list[StateMachineIR] = field(default_factory=list)
     timing_flows: list[TimingFlowIR] = field(default_factory=list)
+    input_events: list[InputEventIR] = field(default_factory=list)
     imports: tuple[str, ...] = ()
