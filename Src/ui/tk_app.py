@@ -22,9 +22,9 @@ PROJECT_NAME = "Kadoka Code Atlas"
 
 _OPERATION_COMMENTS = "Generate comments"
 _OPERATION_CALL_GRAPH = "Call graph (Mermaid)"
-_OPERATION_CLASS_DIAGRAM = "Class diagrams (Mermaid)"
+_OPERATION_CLASS_DIAGRAM = "Class diagrams"
 _OPERATION_OBJECT_DIAGRAM = "Object diagrams (Mermaid)"
-_OPERATION_SEQUENCE_DIAGRAM = "Sequence diagrams (Mermaid)"
+_OPERATION_SEQUENCE_DIAGRAM = "Sequence diagrams"
 _OPERATION_COMMUNICATION_DIAGRAM = "Communication diagrams (Mermaid)"
 _OPERATION_STATE_DIAGRAM = "State diagrams (Mermaid)"
 _OPERATION_PACKAGE_DIAGRAM = "Package diagrams (Mermaid)"
@@ -72,10 +72,14 @@ class AtlasTkApp:
         self.last_diagram_category: str | None = None
 
         sequence_settings = self.service.sequence_diagram_settings()
+        configured_renderer = self.service.config.renderer.lower()
+        if configured_renderer not in {"mermaid", "plantuml"}:
+            configured_renderer = "mermaid"
         self.path_var = tk.StringVar(value="No file or folder selected")
         self.language_var = tk.StringVar(value="Language: -")
         self.operation_var = tk.StringVar(value=_OPERATION_COMMENTS)
         self.status_var = tk.StringVar(value="Select a source file or project folder.")
+        self.renderer_var = tk.StringVar(value=configured_renderer)
         self.sequence_duplicate_var = tk.BooleanVar(
             value=sequence_settings["show_duplicate_calls"]
         )
@@ -110,6 +114,14 @@ class AtlasTkApp:
             width=36,
         )
         operation.pack(side=tk.LEFT)
+        ttk.Label(controls, text="Renderer:").pack(side=tk.LEFT, padx=(18, 6))
+        ttk.Combobox(
+            controls,
+            textvariable=self.renderer_var,
+            values=("mermaid", "plantuml"),
+            state="readonly",
+            width=10,
+        ).pack(side=tk.LEFT)
         ttk.Button(controls, text="Run", command=self.run_selected).pack(side=tk.LEFT, padx=(8, 0))
         ttk.Button(controls, text="Save Result", command=self.save_result).pack(side=tk.LEFT, padx=(8, 0))
 
@@ -149,7 +161,7 @@ class AtlasTkApp:
         pane.pack(fill=tk.BOTH, expand=True)
 
         files_frame = ttk.Labelframe(pane, text="Project files", padding=6)
-        result_frame = ttk.Labelframe(pane, text="Result / Mermaid source", padding=6)
+        result_frame = ttk.Labelframe(pane, text="Result / diagram source", padding=6)
         pane.add(files_frame, weight=1)
         pane.add(result_frame, weight=3)
 
@@ -295,11 +307,14 @@ class AtlasTkApp:
                 content = result.content
                 result_format = result.format
             elif operation == _OPERATION_CLASS_DIAGRAM:
-                outputs = self.service.generate_class_diagrams(SourceAnalysisRequest(path, language))
+                outputs = self.service.generate_class_diagrams(
+                    SourceAnalysisRequest(path, language),
+                    renderer=self.renderer_var.get(),
+                )
                 self.last_diagram_set = outputs
                 self.last_diagram_category = "class_diagrams"
                 content = self._output_set_text(outputs)
-                result_format = "mermaid-bundle"
+                result_format = f"{self.renderer_var.get()}-bundle"
             elif operation == _OPERATION_OBJECT_DIAGRAM:
                 outputs = self.service.generate_object_diagrams(SourceAnalysisRequest(path, language))
                 self.last_diagram_set = outputs
@@ -311,11 +326,12 @@ class AtlasTkApp:
                     SourceAnalysisRequest(path, language),
                     show_duplicate_calls=self.sequence_duplicate_var.get(),
                     show_returns=self.sequence_returns_var.get(),
+                    renderer=self.renderer_var.get(),
                 )
                 self.last_diagram_set = outputs
                 self.last_diagram_category = "sequence_diagrams"
                 content = self._output_set_text(outputs)
-                result_format = "mermaid-bundle"
+                result_format = f"{self.renderer_var.get()}-bundle"
             elif operation == _OPERATION_COMMUNICATION_DIAGRAM:
                 outputs = self.service.generate_communication_diagrams(
                     SourceAnalysisRequest(path, language),
@@ -395,6 +411,8 @@ class AtlasTkApp:
         for output in outputs:
             if output.format == "mermaid":
                 header = f"%% {output.name}"
+            elif output.format == "plantuml":
+                header = f"' {output.name}"
             elif output.format == "markdown":
                 header = f"## {output.name}"
             else:
@@ -427,6 +445,7 @@ class AtlasTkApp:
 
         extension = {
             "mermaid": ".mmd",
+            "plantuml": ".puml",
             "markdown": ".md",
             "csv": ".csv",
             "source": self.current_file.suffix if self.current_file else ".txt",
