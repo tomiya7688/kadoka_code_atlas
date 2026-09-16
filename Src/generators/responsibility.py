@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+from dataclasses import dataclass
 
 from Src.analyzers.class_relations import ClassRelationGraph, build_class_relation_graph
 from Src.analyzers.ir import CodeEntity, ModuleIR
@@ -14,18 +15,11 @@ from Src.models.output_layout import OutputPlacement
 from Src.models.responsibility import ResponsibilityRow, ResponsibilityTable
 
 
+@dataclass(frozen=True, slots=True)
 class ResponsibilityTableBundle:
-    __slots__ = ("tables", "statistics", "placements")
-
-    def __init__(
-        self,
-        tables: tuple[ResponsibilityTable, ...],
-        statistics: dict[str, int | float | tuple[int, ...]],
-        placements: tuple[OutputPlacement, ...] = (),
-    ) -> None:
-        self.tables = tables
-        self.statistics = statistics
-        self.placements = placements
+    tables: tuple[ResponsibilityTable, ...]
+    statistics: dict[str, int | float | tuple[int, ...]]
+    placements: tuple[OutputPlacement, ...] = ()
 
 
 def _words(name: str) -> list[str]:
