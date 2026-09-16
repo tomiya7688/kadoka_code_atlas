@@ -13,6 +13,8 @@ from Src.analyzers.call_sequence import (
 from Src.analyzers.ir import ModuleIR
 from Src.analyzers.partition import partition_graph
 from Src.generators.output_names import stable_output_name
+from Src.generators.series_layout import regular_placement, shared_placement
+from Src.models.output_layout import OutputPlacement
 from Src.models.sequence_diagram import (
     SequenceDiagram,
     SequenceDiagramBundle,
@@ -61,7 +63,8 @@ def build_sequence_diagram_bundle(
         incoming.setdefault(edge.callee, set()).add(edge.caller)
 
     diagrams: list[SequenceDiagram] = []
-    for series_index, series in enumerate(partition.series, start=1):
+    placements: list[OutputPlacement] = []
+    for series_index, series in enumerate(partition.series):
         selected = set(series)
         roots = [
             node
@@ -79,17 +82,19 @@ def build_sequence_diagram_bundle(
                 options=options,
                 blocked_cycle_edges=blocked_cycle_edges,
             )
+            name = stable_output_name(
+                f"series_{series_index + 1}",
+                root,
+                fallback="sequence",
+            )
             diagrams.append(
                 SequenceDiagram(
-                    name=stable_output_name(
-                        f"series_{series_index}",
-                        root,
-                        fallback="sequence",
-                    ),
+                    name=name,
                     participants=_participants(root, messages),
                     messages=messages,
                 )
             )
+            placements.append(regular_placement(name, partition, series_index))
 
     for shared in partition.shared:
         messages: list[SequenceMessage] = []
@@ -108,15 +113,21 @@ def build_sequence_diagram_bundle(
                 if options.show_returns and call.target in sequences:
                     messages.append(SequenceMessage(call.target, shared, "return", 1, "return"))
         frozen = tuple(messages)
+        name = stable_output_name("shared", shared, fallback="sequence")
         diagrams.append(
             SequenceDiagram(
-                name=stable_output_name("shared", shared, fallback="sequence"),
+                name=name,
                 participants=_participants(shared, frozen),
                 messages=frozen,
             )
         )
+        placements.append(shared_placement(name, shared))
 
-    return SequenceDiagramBundle(tuple(diagrams), partition.statistics)
+    return SequenceDiagramBundle(
+        tuple(diagrams),
+        partition.statistics,
+        tuple(placements),
+    )
 
 
 def _expand_sequence(
