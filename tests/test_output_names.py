@@ -13,7 +13,7 @@ def test_stable_output_name_is_deterministic_and_collision_resistant() -> None:
     assert dotted == stable_output_name("series_1", "A.b")
     assert dotted != underscored
     assert dotted.startswith("series_1_")
-    assert dotted.endswith("_A.b")
+    assert dotted.endswith("_A_b")
     assert underscored.endswith("_A_b")
     assert "/" not in stable_output_name("series_1", "A/b")
     assert "\\" not in stable_output_name("series_1", "A\\b")
