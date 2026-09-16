@@ -96,3 +96,27 @@ def test_timing_cli_writes_timing_chart_folder():
         diagrams = list((output / "timing_charts").glob("*.mmd"))
         assert len(diagrams) == 1
         assert "await fetch" in diagrams[0].read_text(encoding="utf-8")
+
+
+def test_use_case_cli_writes_gui_originated_diagram_folder():
+    with TemporaryDirectory() as folder:
+        root = Path(folder)
+        source = root / "ui.py"
+        output = root / "output"
+        source.write_text(
+            """
+class Window:
+    def __init__(self):
+        self.save = Button(text="Save", command=self.on_save)
+    def on_save(self):
+        self.persist()
+    def persist(self):
+        pass
+""",
+            encoding="utf-8",
+        )
+
+        assert main(["use-cases", str(source), "--output-dir", str(output)]) == 0
+        diagrams = list((output / "use_case_diagrams").glob("*.mmd"))
+        assert len(diagrams) == 1
+        assert "Save" in diagrams[0].read_text(encoding="utf-8")

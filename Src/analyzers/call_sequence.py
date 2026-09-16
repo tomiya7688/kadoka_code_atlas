@@ -39,13 +39,30 @@ class SequenceRelationGraph:
         return CallGraph(list(self.edges)).cycles()
 
 
-def resolve_call_sequences(module: ModuleIR) -> dict[str, tuple[ResolvedCall, ...]]:
-    """Resolve ordered raw calls to known callable qualified names where possible."""
-    callable_entities = functions(module)
-    qualified = {qualified_name(entity): entity for entity in callable_entities}
+def _callable_indexes(module: ModuleIR) -> tuple[dict[str, object], dict[str, list[str]]]:
+    qualified = {qualified_name(entity): entity for entity in functions(module)}
     by_simple_name: dict[str, list[str]] = defaultdict(list)
     for name, entity in qualified.items():
         by_simple_name[entity.name].append(name)
+    return qualified, by_simple_name
+
+
+def resolve_callable_reference(
+    module: ModuleIR,
+    raw: str,
+    *,
+    parent: str | None = None,
+    caller_name: str = "",
+) -> str:
+    """Resolve one callable reference using the same rules as sequence analysis."""
+
+    qualified, by_simple_name = _callable_indexes(module)
+    return _resolve_target(raw, caller_name, parent, qualified, by_simple_name)
+
+
+def resolve_call_sequences(module: ModuleIR) -> dict[str, tuple[ResolvedCall, ...]]:
+    """Resolve ordered raw calls to known callable qualified names where possible."""
+    qualified, by_simple_name = _callable_indexes(module)
 
     resolved: dict[str, tuple[ResolvedCall, ...]] = {}
     for caller_name, entity in qualified.items():

@@ -7,6 +7,7 @@ from Src.process.application import ApplicationService, CIRequest, CommentReques
 from Src.process.config_service import load_config
 from Src.process.deployment_service import DeploymentAnalysisRequest, DeploymentService
 from Src.process.timing_service import TimingAnalysisRequest, TimingService
+from Src.process.use_case_service import UseCaseAnalysisRequest, UseCaseService
 from Src.data.files import write_text
 PROJECT_NAME = "Kadoka Code Atlas"
 PROJECT_VERSION = "0.1.0"
@@ -61,6 +62,11 @@ def main(argv: list[str] | None = None) -> int:
     timing.add_argument("source")
     timing.add_argument("--language", help="Adapter name; inferred from the extension.")
     timing.add_argument("--output-dir")
+    use_cases = sub.add_parser("use-cases", help="Generate GUI-originated use case diagrams.")
+    use_cases.add_argument("source")
+    use_cases.add_argument("--language", help="Adapter name; inferred from the extension.")
+    use_cases.add_argument("--output-dir")
+    use_cases.add_argument("--max-depth", type=int, default=5)
     args = parser.parse_args(arguments)
 
     if args.version:
@@ -68,7 +74,7 @@ def main(argv: list[str] | None = None) -> int:
         return 0
     if args.command == "gui":
         return _launch_gui()
-    if args.command not in {"comment", "ci", "deployment", "timing"}:
+    if args.command not in {"comment", "ci", "deployment", "timing", "use-cases"}:
         parser.print_help()
         return 0
 
@@ -97,6 +103,26 @@ def main(argv: list[str] | None = None) -> int:
         result = timing_service.generate(TimingAnalysisRequest(path, language))
         if args.output_dir:
             paths = timing_service.save(Path(args.output_dir), result)
+            for output_path in paths:
+                print(output_path)
+        else:
+            for output in result.outputs:
+                print(f"%% {output.name}")
+                print(output.content, end="")
+        return 0
+
+    if args.command == "use-cases":
+        path = Path(args.source)
+        language = args.language or service.detect_language(path)
+        if language == "unknown":
+            parser.error(f"unsupported source file type: {path.suffix or path.name}")
+        use_case_service = UseCaseService()
+        result = use_case_service.generate(
+            UseCaseAnalysisRequest(path, language),
+            max_depth=args.max_depth,
+        )
+        if args.output_dir:
+            paths = use_case_service.save(Path(args.output_dir), result)
             for output_path in paths:
                 print(output_path)
         else:
