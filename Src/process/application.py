@@ -42,6 +42,8 @@ from Src.renderers.mermaid_object_diagram import render_object_diagram
 from Src.renderers.mermaid_package_diagram import render_package_diagram
 from Src.renderers.mermaid_sequence_diagram import render_sequence_diagram
 from Src.renderers.mermaid_state_diagram import render_state_diagram
+from Src.renderers.plantuml_class_diagram import render_class_diagram as render_class_diagram_plantuml
+from Src.renderers.plantuml_sequence_diagram import render_sequence_diagram as render_sequence_diagram_plantuml
 
 
 @dataclass(frozen=True, slots=True)
@@ -188,6 +190,7 @@ class ApplicationService:
         *,
         fan_in_threshold: int = 3,
         options: ClassDiagramOptions | None = None,
+        renderer: str | None = None,
     ) -> DiagramSetResult:
         module = self._python_module(request)
         bundle = build_class_diagram_bundle(
@@ -195,8 +198,10 @@ class ApplicationService:
             fan_in_threshold=fan_in_threshold,
             options=options,
         )
+        normalized = self._diagram_renderer(renderer)
+        render = render_class_diagram_plantuml if normalized == "plantuml" else render_class_diagram
         outputs = tuple(
-            GeneratedOutput(diagram.name, render_class_diagram(diagram), "mermaid")
+            GeneratedOutput(diagram.name, render(diagram), normalized)
             for diagram in bundle.diagrams
         )
         return DiagramSetResult(outputs, bundle.statistics)
@@ -290,6 +295,7 @@ class ApplicationService:
         max_depth: int = 8,
         show_duplicate_calls: bool | None = None,
         show_returns: bool | None = None,
+        renderer: str | None = None,
     ) -> DiagramSetResult:
         module = self._python_module(request)
         defaults = self.sequence_diagram_options()
@@ -307,8 +313,10 @@ class ApplicationService:
             max_depth=max_depth,
             options=options,
         )
+        normalized = self._diagram_renderer(renderer)
+        render = render_sequence_diagram_plantuml if normalized == "plantuml" else render_sequence_diagram
         outputs = tuple(
-            GeneratedOutput(diagram.name, render_sequence_diagram(diagram), "mermaid")
+            GeneratedOutput(diagram.name, render(diagram), normalized)
             for diagram in bundle.diagrams
         )
         return DiagramSetResult(outputs, bundle.statistics)
@@ -362,6 +370,7 @@ class ApplicationService:
         target = output_root / category
         extensions = {
             "mermaid": ".mmd",
+            "plantuml": ".puml",
             "markdown": ".md",
             "csv": ".csv",
             "source": ".txt",
@@ -377,6 +386,12 @@ class ApplicationService:
             write_text(path, output.content)
             paths.append(path)
         return tuple(paths)
+
+    def _diagram_renderer(self, renderer: str | None) -> str:
+        normalized = (renderer or self.config.renderer).lower()
+        if normalized not in {"mermaid", "plantuml"}:
+            raise ValueError(f"Unsupported diagram renderer: {normalized}")
+        return normalized
 
     @staticmethod
     def _python_module_name(root: Path, path: Path) -> str:
