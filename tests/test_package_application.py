@@ -26,7 +26,9 @@ def test_application_generates_and_saves_python_package_diagrams():
         assert result.statistics["cycle_count"] >= 1
         assert result.statistics["isolated_node_count"] >= 1
         assert all(output.format == "mermaid" for output in result.outputs)
-        assert all(path.parent.name == "package_diagrams" for path in paths)
+        assert all(path.parent.parent.name == "package_diagrams" for path in paths)
+        assert all(path.parent.name.startswith("series_") or path.parent.name == "shared" for path in paths)
+        assert not list((root / "output" / "package_diagrams").glob("*.mmd"))
         assert all(path.suffix == ".mmd" and path.is_file() for path in paths)
         combined = "\n".join(path.read_text(encoding="utf-8") for path in paths)
         assert "pkg.a" in combined
