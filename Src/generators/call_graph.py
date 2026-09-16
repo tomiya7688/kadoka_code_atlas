@@ -10,7 +10,6 @@ from Src.analyzers.partition import partition_graph
 from Src.generators.output_names import stable_output_name
 from Src.generators.series_layout import regular_placement, shared_placement
 from Src.models.output_layout import OutputPlacement
-from Src.renderers.mermaid_call_graph import render_call_graph
 
 
 @dataclass(frozen=True, slots=True)
@@ -26,6 +25,19 @@ class CallGraphBundle:
     placements: tuple[OutputPlacement, ...] = ()
 
 
+def build_call_graph(
+    module: ModuleIR,
+    *,
+    root: str | None = None,
+    max_depth: int | None = None,
+) -> CallGraph:
+    """Build a renderer-neutral call graph from Common IR."""
+    graph = CallGraph.from_module(module)
+    if root is not None:
+        graph = graph.reachable_from(root, max_depth=max_depth)
+    return graph
+
+
 def build_call_graph_bundle(
     module: ModuleIR,
     *,
@@ -35,9 +47,7 @@ def build_call_graph_bundle(
 ) -> CallGraphBundle:
     """Build partitioned caller-centered call graphs plus shared-hub graphs."""
 
-    graph = CallGraph.from_module(module)
-    if root is not None:
-        graph = graph.reachable_from(root, max_depth=max_depth)
+    graph = build_call_graph(module, root=root, max_depth=max_depth)
 
     partition = partition_graph(graph, fan_in_threshold=fan_in_threshold)
     shared = set(partition.shared)
@@ -104,17 +114,3 @@ def build_call_graph_bundle(
         partition.statistics,
         tuple(placements),
     )
-
-
-def generate_call_graph_mermaid(
-    module: ModuleIR,
-    *,
-    root: str | None = None,
-    max_depth: int | None = None,
-    direction: str = "LR",
-) -> str:
-    """Build a call graph from IR and render it as Mermaid."""
-    graph = CallGraph.from_module(module)
-    if root is not None:
-        graph = graph.reachable_from(root, max_depth=max_depth)
-    return render_call_graph(graph, direction=direction)
