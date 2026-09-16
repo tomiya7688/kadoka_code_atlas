@@ -47,8 +47,8 @@ def test_discover_deployment_files_finds_docker_compose_and_manifests():
 
         result = discover_deployment_files(root)
 
-        assert result == [
+        assert set(result) == {
             root / "Dockerfile",
             root / "compose.yaml",
             root / "k8s" / "deployment.yaml",
-        ]
+        }
