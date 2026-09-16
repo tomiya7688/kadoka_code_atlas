@@ -8,6 +8,7 @@ from Src.analyzers.class_relations import ClassRelationGraph, build_class_relati
 from Src.analyzers.ir import EntityKind, ModuleIR, Visibility
 from Src.analyzers.ir_queries import classes, qualified_name
 from Src.analyzers.partition import partition_graph
+from Src.generators.output_names import stable_output_name
 from Src.models.class_diagram import (
     ClassDiagram,
     ClassDiagramBundle,
@@ -89,9 +90,10 @@ def build_class_diagram_bundle(
             for edge in visible_relations
             if edge.caller in selected and edge.callee in selected
         )
+        root = series[0]
         diagrams.append(
             ClassDiagram(
-                name=f"series_{index}_{_slug(series[0])}",
+                name=stable_output_name(f"series_{index}", root, fallback="class"),
                 nodes=tuple(node_model(name) for name in series),
                 relations=relations,
             )
@@ -102,15 +104,10 @@ def build_class_diagram_bundle(
         selected = {shared, *(edge.caller for edge in incoming)}
         diagrams.append(
             ClassDiagram(
-                name=f"shared_{_slug(shared)}",
+                name=stable_output_name("shared", shared, fallback="class"),
                 nodes=tuple(node_model(name) for name in sorted(selected)),
                 relations=tuple(relation_model(edge) for edge in incoming),
             )
         )
 
     return ClassDiagramBundle(tuple(diagrams), partition.statistics)
-
-
-def _slug(value: str) -> str:
-    result = "".join(character if character.isalnum() else "_" for character in value)
-    return result.strip("_") or "diagram"

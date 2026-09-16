@@ -179,7 +179,11 @@ def sink(): pass
         fan_in_threshold=2,
     )
 
-    shared = next(item for item in bundle.diagrams if item.name == "shared_shared")
+    shared = next(
+        item
+        for item in bundle.diagrams
+        if item.name.startswith("shared_") and item.name.endswith("_shared")
+    )
     assert {(item.caller, item.callee) for item in shared.messages[:2]} == {
         ("first", "shared"),
         ("second", "shared"),

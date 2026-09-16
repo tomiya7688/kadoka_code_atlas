@@ -100,8 +100,12 @@ class DeploymentService:
     ) -> tuple[Path, ...]:
         target = output_root / "deployment_diagrams"
         paths: list[Path] = []
+        seen: set[Path] = set()
         for output in result.outputs:
             path = target / f"{output.name}.mmd"
+            if path in seen:
+                raise ValueError(f"Duplicate deployment output path: {path}")
+            seen.add(path)
             write_text(path, output.content)
             paths.append(path)
         return tuple(paths)

@@ -3,10 +3,10 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-import re
 
 from Src.analyzers.call_graph import CallEdge, CallGraph
 from Src.analyzers.partition import partition_graph
+from Src.generators.output_names import stable_output_name
 from Src.models.deployment import DeploymentConnection, DeploymentNode, DeploymentTopology
 
 
@@ -49,11 +49,6 @@ class _Graph:
         return self._call_graph().cycles()
 
 
-def _safe_name(value: str) -> str:
-    normalized = re.sub(r"[^A-Za-z0-9_.-]+", "_", value).strip("_.-")
-    return normalized or "deployment"
-
-
 def build_deployment_diagram_bundle(
     topology: DeploymentTopology,
     *,
@@ -69,9 +64,9 @@ def build_deployment_diagram_bundle(
     partition = partition_graph(graph, fan_in_threshold=fan_in_threshold)
     diagrams: list[DeploymentDiagram] = []
 
-    def make(name: str, ids: set[str]) -> DeploymentDiagram:
+    def make(prefix: str, logical_name: str, ids: set[str]) -> DeploymentDiagram:
         return DeploymentDiagram(
-            _safe_name(name),
+            stable_output_name(prefix, logical_name, fallback="deployment"),
             tuple(node_by_id[node_id] for node_id in sorted(ids) if node_id in node_by_id),
             tuple(
                 item
@@ -80,16 +75,16 @@ def build_deployment_diagram_bundle(
             ),
         )
 
-    for series in partition.series:
+    for index, series in enumerate(partition.series, start=1):
         ids = set(series)
         if ids:
-            diagrams.append(make(f"series_{series[0]}", ids))
+            diagrams.append(make(f"series_{index}", series[0], ids))
 
     for shared in partition.shared:
         ids = {shared}
         ids.update(item.source for item in topology.connections if item.target == shared)
         ids.update(item.target for item in topology.connections if item.source == shared)
-        diagrams.append(make(f"shared_{shared}", ids))
+        diagrams.append(make("shared", shared, ids))
 
     statistics = dict(partition.statistics)
     statistics["confirmed_node_count"] = sum(

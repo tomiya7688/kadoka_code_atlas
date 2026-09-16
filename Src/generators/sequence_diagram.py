@@ -12,6 +12,7 @@ from Src.analyzers.call_sequence import (
 )
 from Src.analyzers.ir import ModuleIR
 from Src.analyzers.partition import partition_graph
+from Src.generators.output_names import stable_output_name
 from Src.models.sequence_diagram import (
     SequenceDiagram,
     SequenceDiagramBundle,
@@ -80,7 +81,11 @@ def build_sequence_diagram_bundle(
             )
             diagrams.append(
                 SequenceDiagram(
-                    name=f"series_{series_index}_{_slug(root)}",
+                    name=stable_output_name(
+                        f"series_{series_index}",
+                        root,
+                        fallback="sequence",
+                    ),
                     participants=_participants(root, messages),
                     messages=messages,
                 )
@@ -105,7 +110,7 @@ def build_sequence_diagram_bundle(
         frozen = tuple(messages)
         diagrams.append(
             SequenceDiagram(
-                name=f"shared_{_slug(shared)}",
+                name=stable_output_name("shared", shared, fallback="sequence"),
                 participants=_participants(shared, frozen),
                 messages=frozen,
             )
@@ -193,8 +198,3 @@ def _first_label(
         if call.target == callee:
             return call.raw
     return callee.rsplit(".", 1)[-1]
-
-
-def _slug(value: str) -> str:
-    result = "".join(character if character.isalnum() else "_" for character in value)
-    return result.strip("_") or "sequence"

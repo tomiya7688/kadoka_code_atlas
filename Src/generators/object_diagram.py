@@ -5,6 +5,7 @@ from __future__ import annotations
 from Src.analyzers.ir import ModuleIR
 from Src.analyzers.object_relations import build_object_relation_graph, object_key
 from Src.analyzers.partition import partition_graph
+from Src.generators.output_names import stable_output_name
 from Src.models.object_diagram import (
     ObjectDiagram,
     ObjectDiagramBundle,
@@ -45,9 +46,10 @@ def build_object_diagram_bundle(
             for edge in graph.edges
             if edge.caller in selected and edge.callee in selected
         )
+        root = series[0]
         diagrams.append(
             ObjectDiagram(
-                name=f"series_{index}_{_slug(series[0])}",
+                name=stable_output_name(f"series_{index}", root, fallback="object"),
                 nodes=tuple(node_model(key) for key in series),
                 references=references,
             )
@@ -65,15 +67,10 @@ def build_object_diagram_bundle(
             selected.add(edge.callee)
         diagrams.append(
             ObjectDiagram(
-                name=f"shared_{_slug(shared)}",
+                name=stable_output_name("shared", shared, fallback="object"),
                 nodes=tuple(node_model(key) for key in sorted(selected)),
                 references=tuple(reference_model(edge) for edge in related),
             )
         )
 
     return ObjectDiagramBundle(tuple(diagrams), partition.statistics)
-
-
-def _slug(value: str) -> str:
-    result = "".join(character if character.isalnum() else "_" for character in value)
-    return result.strip("_") or "object"
