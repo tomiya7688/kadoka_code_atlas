@@ -22,6 +22,17 @@ def _node_line(node_id: str, label: str, kind: str) -> str:
     return f'    {node_id}["{text}"]'
 
 
+def _label(node) -> str:
+    label = node.label
+    metadata = dict(node.metadata)
+    detail = metadata.get("image") or metadata.get("images")
+    if detail:
+        label = f"{label}\\n{detail}"
+    if node.environment:
+        label = f"{label}\\n[{node.environment}]"
+    return label
+
+
 def render_deployment_diagram(diagram: DeploymentDiagram) -> str:
     """Render one deployment diagram with confidence encoded as line style/class."""
 
@@ -29,10 +40,7 @@ def render_deployment_diagram(diagram: DeploymentDiagram) -> str:
     ids = {node.id: f"n{index}" for index, node in enumerate(ordered)}
     lines = ["flowchart LR"]
     for node in ordered:
-        label = node.label
-        if node.environment:
-            label = f"{label}\\n[{node.environment}]"
-        lines.append(_node_line(ids[node.id], label, node.kind))
+        lines.append(_node_line(ids[node.id], _label(node), node.kind))
 
     for connection in diagram.connections:
         if connection.source not in ids or connection.target not in ids:
