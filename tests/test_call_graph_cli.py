@@ -42,8 +42,11 @@ def X(): pass
             ]
         ) == 0
 
-        diagrams = sorted((output / "call_graphs").glob("*.mmd"))
+        call_graphs = output / "call_graphs"
+        diagrams = sorted(call_graphs.rglob("*.mmd"))
         assert len(diagrams) == 3
+        assert not list(call_graphs.glob("*.mmd"))
+        assert all(path.parent.name.startswith("series_") for path in diagrams)
         assert all("flowchart LR" in path.read_text(encoding="utf-8") for path in diagrams)
 
 
@@ -70,8 +73,9 @@ def test_call_graph_cli_root_and_depth_bound_output() -> None:
             ]
         ) == 0
 
-        diagrams = list((output / "call_graphs").glob("*.mmd"))
+        diagrams = list((output / "call_graphs").rglob("*.mmd"))
         assert len(diagrams) == 1
+        assert diagrams[0].parent.name.startswith("series_")
         content = diagrams[0].read_text(encoding="utf-8")
         assert '"a"' in content
         assert '"b"' in content
