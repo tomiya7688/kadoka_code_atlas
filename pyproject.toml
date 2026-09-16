@@ -12,7 +12,7 @@ license = "MIT"
 authors = [
     { name = "tomiya7688" }
 ]
-dependencies = []
+dependencies = ["PyYAML>=6.0"]
 
 [project.optional-dependencies]
 test = ["pytest>=8"]
