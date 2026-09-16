@@ -19,6 +19,7 @@ from Src.generators.communication_diagram import build_communication_diagram_bun
 from Src.generators.object_diagram import build_object_diagram_bundle
 from Src.generators.responsibility import build_responsibility_table_bundle
 from Src.generators.sequence_diagram import SequenceDiagramOptions, build_sequence_diagram_bundle
+from Src.generators.state_diagram import build_state_diagram_bundle
 from Src.languages.python import PythonLanguageAdapter
 from Src.models.config import AtlasConfig
 from Src.renderers import render_ci_workflow
@@ -27,6 +28,7 @@ from Src.renderers.mermaid_class_diagram import render_class_diagram
 from Src.renderers.mermaid_communication_diagram import render_communication_diagram
 from Src.renderers.mermaid_object_diagram import render_object_diagram
 from Src.renderers.mermaid_sequence_diagram import render_sequence_diagram
+from Src.renderers.mermaid_state_diagram import render_state_diagram
 
 
 @dataclass(frozen=True, slots=True)
@@ -190,6 +192,18 @@ class ApplicationService:
         bundle = build_object_diagram_bundle(module, fan_in_threshold=fan_in_threshold)
         outputs = tuple(
             GeneratedOutput(diagram.name, render_object_diagram(diagram), "mermaid")
+            for diagram in bundle.diagrams
+        )
+        return DiagramSetResult(outputs, bundle.statistics)
+
+    def generate_state_diagrams(
+        self,
+        request: SourceAnalysisRequest,
+    ) -> DiagramSetResult:
+        module = self._python_module(request)
+        bundle = build_state_diagram_bundle(module)
+        outputs = tuple(
+            GeneratedOutput(diagram.name, render_state_diagram(diagram), "mermaid")
             for diagram in bundle.diagrams
         )
         return DiagramSetResult(outputs, bundle.statistics)

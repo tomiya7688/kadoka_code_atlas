@@ -53,9 +53,34 @@ class ObjectInstanceIR:
 
 
 @dataclass(slots=True)
+class StateTransitionIR:
+    """Passive state transition fact normalized by a language adapter."""
+
+    source: str
+    target: str
+    line: int
+    event: str | None = None
+    condition: str | None = None
+
+
+@dataclass(slots=True)
+class StateMachineIR:
+    """Passive explicit state-machine facts with no evaluation behavior."""
+
+    owner: str
+    state_type: str
+    state_variable: str
+    states: tuple[str, ...]
+    transitions: tuple[StateTransitionIR, ...] = ()
+    initial_state: str | None = None
+    terminal_states: tuple[str, ...] = ()
+
+
+@dataclass(slots=True)
 class ModuleIR:
     """Normalized representation of one source module/file."""
 
     language: str
     entities: list[CodeEntity] = field(default_factory=list)
     objects: list[ObjectInstanceIR] = field(default_factory=list)
+    state_machines: list[StateMachineIR] = field(default_factory=list)
