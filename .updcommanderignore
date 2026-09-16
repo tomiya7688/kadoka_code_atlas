@@ -1,0 +1,6 @@
+tests/**
+tools/**
+.dev/**
+build/**
+dist/**
+.venv/**
