@@ -25,8 +25,9 @@ def test_class_diagram_cli_writes_plantuml_files() -> None:
             ]
         ) == 0
 
-        diagrams = list((output / "class_diagrams").glob("*.puml"))
+        diagrams = list((output / "class_diagrams").rglob("*.puml"))
         assert diagrams
+        assert diagrams[0].parent.name.startswith("series_")
         assert "@startuml" in diagrams[0].read_text(encoding="utf-8")
 
 
@@ -52,8 +53,9 @@ def test_sequence_diagram_cli_writes_plantuml_files() -> None:
             ]
         ) == 0
 
-        diagrams = list((output / "sequence_diagrams").glob("*.puml"))
+        diagrams = list((output / "sequence_diagrams").rglob("*.puml"))
         assert diagrams
+        assert diagrams[0].parent.name.startswith("series_")
         content = diagrams[0].read_text(encoding="utf-8")
         assert "@startuml" in content
         assert "-->" in content
@@ -68,6 +70,7 @@ def test_class_diagram_cli_defaults_to_mermaid() -> None:
 
         assert main(["class-diagram", str(source), "--output-dir", str(output)]) == 0
 
-        diagrams = list((output / "class_diagrams").glob("*.mmd"))
+        diagrams = list((output / "class_diagrams").rglob("*.mmd"))
         assert diagrams
+        assert diagrams[0].parent.name.startswith("series_")
         assert "classDiagram" in diagrams[0].read_text(encoding="utf-8")
