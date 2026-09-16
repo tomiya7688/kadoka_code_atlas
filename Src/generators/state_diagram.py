@@ -3,9 +3,9 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-import re
 
 from Src.analyzers.ir import ModuleIR
+from Src.generators.output_names import stable_output_name
 
 
 @dataclass(frozen=True, slots=True)
@@ -34,17 +34,16 @@ class StateDiagramBundle:
     statistics: dict[str, int | tuple[int, ...]]
 
 
-def _safe_name(value: str) -> str:
-    normalized = re.sub(r"[^A-Za-z0-9_.-]+", "_", value).strip("_.-")
-    return normalized or "state_machine"
-
-
 def build_state_diagram_bundle(module: ModuleIR) -> StateDiagramBundle:
     """Convert passive state-machine IR into logical diagrams, one per owner/variable."""
 
     diagrams = tuple(
         StateDiagram(
-            name=_safe_name(f"{machine.owner}_{machine.state_variable}"),
+            name=stable_output_name(
+                "state",
+                f"{machine.owner}.{machine.state_variable}",
+                fallback="state_machine",
+            ),
             owner=machine.owner,
             state_type=machine.state_type,
             state_variable=machine.state_variable,
