@@ -68,7 +68,7 @@ def test_state_diagram_bundle_and_mermaid_renderer():
     diagram = bundle.diagrams[0]
     rendered = render_state_diagram(diagram)
     assert diagram.name.startswith("state_")
-    assert diagram.name.endswith("_Worker.state")
+    assert diagram.name.endswith("_Worker_state")
     assert rendered.startswith("stateDiagram-v2\n")
     assert "[*] --> IDLE" in rendered
     assert "IDLE --> RUNNING: start [self.state == State.IDLE]" in rendered
