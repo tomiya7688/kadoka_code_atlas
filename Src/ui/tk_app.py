@@ -23,6 +23,7 @@ _OPERATION_OBJECT_DIAGRAM = "Object diagrams (Mermaid)"
 _OPERATION_SEQUENCE_DIAGRAM = "Sequence diagrams (Mermaid)"
 _OPERATION_COMMUNICATION_DIAGRAM = "Communication diagrams (Mermaid)"
 _OPERATION_RESPONSIBILITY = "Class responsibility tables"
+_OPERATION_DESIGN_QUALITY = "Design quality report"
 _OPERATION_CI = "GitHub Actions CI graph"
 _OPERATIONS = (
     _OPERATION_COMMENTS,
@@ -32,6 +33,7 @@ _OPERATIONS = (
     _OPERATION_SEQUENCE_DIAGRAM,
     _OPERATION_COMMUNICATION_DIAGRAM,
     _OPERATION_RESPONSIBILITY,
+    _OPERATION_DESIGN_QUALITY,
     _OPERATION_CI,
 )
 
@@ -188,6 +190,7 @@ class AtlasTkApp:
             _OPERATION_SEQUENCE_DIAGRAM,
             _OPERATION_COMMUNICATION_DIAGRAM,
             _OPERATION_RESPONSIBILITY,
+            _OPERATION_DESIGN_QUALITY,
         }:
             self.operation_var.set(_OPERATION_COMMENTS)
 
@@ -255,6 +258,12 @@ class AtlasTkApp:
                 self.last_diagram_category = "responsibility_tables"
                 content = self._output_set_text(outputs)
                 result_format = "markdown-bundle"
+            elif operation == _OPERATION_DESIGN_QUALITY:
+                result = self.service.evaluate_design_quality(
+                    SourceAnalysisRequest(path, language)
+                )
+                content = result.content
+                result_format = result.format
             elif operation == _OPERATION_CI:
                 if path.suffix.lower() not in {".yml", ".yaml"}:
                     raise ValueError("CI analysis expects a GitHub Actions YAML file.")
