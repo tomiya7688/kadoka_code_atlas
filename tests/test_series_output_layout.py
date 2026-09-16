@@ -1,6 +1,8 @@
+from dataclasses import dataclass
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
+from Src.data.generated_outputs import save_generated_outputs
 from Src.generators.call_graph import build_call_graph_bundle
 from Src.languages.python import PythonLanguageAdapter
 from Src.process.application import (
@@ -9,6 +11,13 @@ from Src.process.application import (
     GeneratedOutput,
     SourceAnalysisRequest,
 )
+
+
+@dataclass(frozen=True)
+class _FlatOutput:
+    name: str
+    content: str
+    format: str
 
 
 def test_recursive_partition_exposes_series_output_placement_metadata() -> None:
@@ -118,3 +127,16 @@ def test_future_multi_output_generator_can_use_common_save_contract() -> None:
         assert {path.parent.name for path in paths} == {"series_a", "series_b"}
         assert all(path.parent.parent.name == "flowcharts" for path in paths)
         assert not list((root / "flowcharts").glob("*.mmd"))
+
+
+def test_common_saver_accepts_legacy_flat_output_models() -> None:
+    with TemporaryDirectory() as folder:
+        root = Path(folder)
+        paths = save_generated_outputs(
+            root,
+            "timing_charts",
+            (_FlatOutput("timeline", "flowchart LR\n", "mermaid"),),
+        )
+
+        assert paths == (root / "timing_charts" / "timeline.mmd",)
+        assert paths[0].is_file()

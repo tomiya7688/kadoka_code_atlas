@@ -6,14 +6,15 @@ from pathlib import Path
 import tkinter as tk
 from tkinter import filedialog, messagebox, scrolledtext, ttk
 
+from Src.generators.class_diagram import ClassDiagramOptions
 from Src.process.application import (
     ApplicationService,
     CIRequest,
     CommentRequest,
-    DiagramSetResult,
     ProjectAnalysisRequest,
     SourceAnalysisRequest,
 )
+from Src.process.call_graph_service import CallGraphAnalysisRequest, CallGraphService
 from Src.process.deployment_service import DeploymentAnalysisRequest, DeploymentService
 from Src.process.timing_service import TimingAnalysisRequest, TimingService
 from Src.process.use_case_service import UseCaseAnalysisRequest, UseCaseService
@@ -52,6 +53,11 @@ _OPERATIONS = (
     _OPERATION_DESIGN_QUALITY,
     _OPERATION_CI,
 )
+_PROJECT_OPERATIONS = {
+    _OPERATION_PACKAGE_DIAGRAM,
+    _OPERATION_COMPONENT_DIAGRAM,
+    _OPERATION_DEPLOYMENT_DIAGRAM,
+}
 
 
 class AtlasTkApp:
@@ -60,6 +66,7 @@ class AtlasTkApp:
     def __init__(self, root: tk.Tk, service: ApplicationService | None = None) -> None:
         self.root = root
         self.service = service or ApplicationService()
+        self.call_graph_service = CallGraphService()
         self.deployment_service = DeploymentService()
         self.timing_service = TimingService()
         self.use_case_service = UseCaseService()
@@ -70,6 +77,7 @@ class AtlasTkApp:
         self.last_format = "text"
         self.last_diagram_set: object | None = None
         self.last_diagram_category: str | None = None
+        self.last_outputs: tuple[object, ...] = ()
 
         sequence_settings = self.service.sequence_diagram_settings()
         configured_renderer = self.service.config.renderer.lower()
@@ -85,13 +93,20 @@ class AtlasTkApp:
         )
         self.sequence_returns_var = tk.BooleanVar(value=sequence_settings["show_returns"])
         self.deployment_mode_var = tk.StringVar(value="full")
+        self.class_public_var = tk.BooleanVar(value=True)
+        self.class_protected_var = tk.BooleanVar(value=True)
+        self.class_internal_var = tk.BooleanVar(value=True)
+        self.class_private_var = tk.BooleanVar(value=True)
+        self.class_methods_var = tk.BooleanVar(value=True)
+        self.class_inheritance_var = tk.BooleanVar(value=True)
+        self.class_uses_var = tk.BooleanVar(value=True)
 
         self._build_window()
 
     def _build_window(self) -> None:
         self.root.title(PROJECT_NAME)
-        self.root.geometry("1100x780")
-        self.root.minsize(820, 600)
+        self.root.geometry("1180x840")
+        self.root.minsize(860, 640)
 
         outer = ttk.Frame(self.root, padding=10)
         outer.pack(fill=tk.BOTH, expand=True)
@@ -122,8 +137,23 @@ class AtlasTkApp:
             state="readonly",
             width=10,
         ).pack(side=tk.LEFT)
-        ttk.Button(controls, text="Run", command=self.run_selected).pack(side=tk.LEFT, padx=(8, 0))
+        ttk.Button(controls, text="Run / Re-run", command=self.run_selected).pack(side=tk.LEFT, padx=(8, 0))
         ttk.Button(controls, text="Save Result", command=self.save_result).pack(side=tk.LEFT, padx=(8, 0))
+
+        class_settings = ttk.Labelframe(outer, text="Class diagram filters", padding=6)
+        class_settings.pack(fill=tk.X, pady=(0, 6))
+        for text, variable in (
+            ("Public", self.class_public_var),
+            ("Protected", self.class_protected_var),
+            ("Internal", self.class_internal_var),
+            ("Private", self.class_private_var),
+            ("Methods", self.class_methods_var),
+            ("Inheritance", self.class_inheritance_var),
+            ("Type / constructor use", self.class_uses_var),
+        ):
+            ttk.Checkbutton(class_settings, text=text, variable=variable).pack(
+                side=tk.LEFT, padx=(0, 12)
+            )
 
         sequence_settings = ttk.Labelframe(outer, text="Sequence diagram settings", padding=6)
         sequence_settings.pack(fill=tk.X, pady=(0, 6))
@@ -161,7 +191,7 @@ class AtlasTkApp:
         pane.pack(fill=tk.BOTH, expand=True)
 
         files_frame = ttk.Labelframe(pane, text="Project files", padding=6)
-        result_frame = ttk.Labelframe(pane, text="Result / diagram source", padding=6)
+        result_frame = ttk.Labelframe(pane, text="Generated results / selected source", padding=6)
         pane.add(files_frame, weight=1)
         pane.add(result_frame, weight=3)
 
@@ -171,6 +201,11 @@ class AtlasTkApp:
         self.file_list.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
         file_scroll.pack(side=tk.RIGHT, fill=tk.Y)
         self.file_list.bind("<<ListboxSelect>>", self._on_file_selected)
+
+        ttk.Label(result_frame, text="Outputs:").pack(fill=tk.X)
+        self.result_list = tk.Listbox(result_frame, exportselection=False, height=5)
+        self.result_list.pack(fill=tk.X, pady=(2, 6))
+        self.result_list.bind("<<ListboxSelect>>", self._on_result_selected)
 
         self.result_text = scrolledtext.ScrolledText(result_frame, wrap=tk.NONE, undo=False)
         self.result_text.pack(fill=tk.BOTH, expand=True)
@@ -212,6 +247,7 @@ class AtlasTkApp:
         self.current_file = None
         self.path_var.set(str(base_path))
         self.file_list.delete(0, tk.END)
+        self._clear_result_catalog()
         for path in files:
             display = str(path.relative_to(base_path)) if base_path.is_dir() else path.name
             self.file_list.insert(tk.END, display)
@@ -250,7 +286,7 @@ class AtlasTkApp:
 
     def run_selected(self) -> None:
         operation = self.operation_var.get()
-        project_operation = operation == _OPERATION_DEPLOYMENT_DIAGRAM
+        project_operation = operation in _PROJECT_OPERATIONS
         if self.current_file is None and not (
             project_operation and self.base_path is not None and self.base_path.is_dir()
         ):
@@ -265,6 +301,7 @@ class AtlasTkApp:
         self.root.update_idletasks()
         self.last_diagram_set = None
         self.last_diagram_category = None
+        self.last_outputs = ()
 
         try:
             if operation == _OPERATION_DEPLOYMENT_DIAGRAM:
@@ -281,17 +318,13 @@ class AtlasTkApp:
                 content = self._output_set_text(outputs)
                 result_format = "mermaid-bundle"
             elif operation == _OPERATION_TIMING_CHART:
-                outputs = self.timing_service.generate(
-                    TimingAnalysisRequest(path, language)
-                )
+                outputs = self.timing_service.generate(TimingAnalysisRequest(path, language))
                 self.last_diagram_set = outputs
                 self.last_diagram_category = "timing_charts"
                 content = self._output_set_text(outputs)
                 result_format = "mermaid-bundle"
             elif operation == _OPERATION_USE_CASE_DIAGRAM:
-                outputs = self.use_case_service.generate(
-                    UseCaseAnalysisRequest(path, language)
-                )
+                outputs = self.use_case_service.generate(UseCaseAnalysisRequest(path, language))
                 self.last_diagram_set = outputs
                 self.last_diagram_category = "use_case_diagrams"
                 content = self._output_set_text(outputs)
@@ -303,12 +336,25 @@ class AtlasTkApp:
                 content = result.content
                 result_format = "source"
             elif operation == _OPERATION_CALL_GRAPH:
-                result = self.service.generate_call_graph(SourceAnalysisRequest(path, language))
-                content = result.content
-                result_format = result.format
+                outputs = self.call_graph_service.generate(
+                    CallGraphAnalysisRequest(path, language)
+                )
+                self.last_diagram_set = outputs
+                self.last_diagram_category = "call_graphs"
+                content = self._output_set_text(outputs)
+                result_format = "mermaid-bundle"
             elif operation == _OPERATION_CLASS_DIAGRAM:
                 outputs = self.service.generate_class_diagrams(
                     SourceAnalysisRequest(path, language),
+                    options=ClassDiagramOptions(
+                        include_public=self.class_public_var.get(),
+                        include_protected=self.class_protected_var.get(),
+                        include_internal=self.class_internal_var.get(),
+                        include_private=self.class_private_var.get(),
+                        include_methods=self.class_methods_var.get(),
+                        include_inheritance=self.class_inheritance_var.get(),
+                        include_uses=self.class_uses_var.get(),
+                    ),
                     renderer=self.renderer_var.get(),
                 )
                 self.last_diagram_set = outputs
@@ -342,9 +388,7 @@ class AtlasTkApp:
                 content = self._output_set_text(outputs)
                 result_format = "mermaid-bundle"
             elif operation == _OPERATION_STATE_DIAGRAM:
-                outputs = self.service.generate_state_diagrams(
-                    SourceAnalysisRequest(path, language)
-                )
+                outputs = self.service.generate_state_diagrams(SourceAnalysisRequest(path, language))
                 self.last_diagram_set = outputs
                 self.last_diagram_category = "state_diagrams"
                 content = self._output_set_text(outputs)
@@ -379,9 +423,7 @@ class AtlasTkApp:
                 content = self._output_set_text(outputs)
                 result_format = "markdown-bundle"
             elif operation == _OPERATION_DESIGN_QUALITY:
-                result = self.service.evaluate_design_quality(
-                    SourceAnalysisRequest(path, language)
-                )
+                result = self.service.evaluate_design_quality(SourceAnalysisRequest(path, language))
                 content = result.content
                 result_format = result.format
             elif operation == _OPERATION_CI:
@@ -399,8 +441,14 @@ class AtlasTkApp:
 
         self.last_result = content
         self.last_format = result_format
-        self._show_result(content)
-        self.status_var.set(f"Completed: {operation} ({result_format}).")
+        if self.last_diagram_set is not None:
+            self._show_output_set(self.last_diagram_set)
+            count = len(self.last_outputs)
+            self.status_var.set(f"Completed: {operation} ({count} output(s), {result_format}).")
+        else:
+            self._clear_result_catalog()
+            self._show_result(content)
+            self.status_var.set(f"Completed: {operation} ({result_format}).")
 
     @staticmethod
     def _output_set_text(result: object) -> str:
@@ -419,6 +467,37 @@ class AtlasTkApp:
                 header = f"# {output.name}"
             sections.append(f"{header}\n{output.content.rstrip()}")
         return "\n\n".join(sections) + "\n"
+
+    def _show_output_set(self, result: object) -> None:
+        self.last_outputs = tuple(getattr(result, "outputs", ()))
+        self.result_list.delete(0, tk.END)
+        for output in self.last_outputs:
+            relative_dir = getattr(output, "relative_dir", ())
+            prefix = "/".join(relative_dir)
+            label = f"{prefix + '/' if prefix else ''}{output.name} [{output.format}]"
+            self.result_list.insert(tk.END, label)
+        if self.last_outputs:
+            self.result_list.selection_set(0)
+            self.result_list.activate(0)
+            self._show_result(getattr(self.last_outputs[0], "content", ""))
+        else:
+            self._show_result("No outputs were generated.\n")
+
+    def _on_result_selected(self, _event: object) -> None:
+        selection = self.result_list.curselection()
+        if not selection or not self.last_outputs:
+            return
+        index = selection[0]
+        output = self.last_outputs[index]
+        self._show_result(getattr(output, "content", ""))
+        self.status_var.set(
+            f"Viewing {getattr(output, 'name', 'output')} ({getattr(output, 'format', 'text')})."
+        )
+
+    def _clear_result_catalog(self) -> None:
+        self.last_outputs = ()
+        if hasattr(self, "result_list"):
+            self.result_list.delete(0, tk.END)
 
     def _show_result(self, content: str) -> None:
         self.result_text.configure(state=tk.NORMAL)
