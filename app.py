@@ -5,6 +5,7 @@ import sys
 from pathlib import Path
 from Src.process.application import ApplicationService, CIRequest, CommentRequest
 from Src.process.config_service import load_config
+from Src.process.deployment_service import DeploymentAnalysisRequest, DeploymentService
 from Src.data.files import write_text
 PROJECT_NAME = "Kadoka Code Atlas"
 PROJECT_VERSION = "0.1.0"
@@ -40,6 +41,10 @@ def main(argv: list[str] | None = None) -> int:
     ci.add_argument("source")
     ci.add_argument("--output")
     ci.add_argument("--check", action="store_true", help="Report quality findings and fail on errors.")
+    deployment = sub.add_parser("deployment", help="Generate project deployment diagrams.")
+    deployment.add_argument("root")
+    deployment.add_argument("--mode", choices=("simple", "full"), default="full")
+    deployment.add_argument("--output-dir")
     args = parser.parse_args(arguments)
 
     if args.version:
@@ -47,8 +52,23 @@ def main(argv: list[str] | None = None) -> int:
         return 0
     if args.command == "gui":
         return _launch_gui()
-    if args.command not in {"comment", "ci"}:
+    if args.command not in {"comment", "ci", "deployment"}:
         parser.print_help()
+        return 0
+
+    if args.command == "deployment":
+        deployment_service = DeploymentService()
+        result = deployment_service.generate(
+            DeploymentAnalysisRequest(Path(args.root), args.mode)
+        )
+        if args.output_dir:
+            paths = deployment_service.save(Path(args.output_dir), result)
+            for path in paths:
+                print(path)
+        else:
+            for output in result.outputs:
+                print(f"%% {output.name}")
+                print(output.content, end="")
         return 0
 
     service = _application_service()
