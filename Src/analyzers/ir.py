@@ -41,8 +41,21 @@ class CodeEntity:
 
 
 @dataclass(slots=True)
+class ObjectInstanceIR:
+    """Passive static object facts normalized by a language adapter."""
+
+    name: str
+    type_name: str
+    line: int
+    scope: str | None = None
+    values: tuple[tuple[str, str], ...] = ()
+    references: tuple[tuple[str, str], ...] = ()
+
+
+@dataclass(slots=True)
 class ModuleIR:
     """Normalized representation of one source module/file."""
 
     language: str
     entities: list[CodeEntity] = field(default_factory=list)
+    objects: list[ObjectInstanceIR] = field(default_factory=list)
