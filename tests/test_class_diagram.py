@@ -63,7 +63,11 @@ class Second:
     )
 
     assert bundle.statistics["shared_node_count"] == 1
-    shared = next(diagram for diagram in bundle.diagrams if diagram.name == "shared_Shared")
+    shared = next(
+        diagram
+        for diagram in bundle.diagrams
+        if diagram.name.startswith("shared_") and diagram.name.endswith("_Shared")
+    )
     assert {node.name for node in shared.nodes} == {"First", "Second", "Shared"}
     assert {(relation.source, relation.target) for relation in shared.relations} == {
         ("First", "Shared"),
