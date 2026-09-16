@@ -1,4 +1,8 @@
-"""Deterministic, language-independent comment candidate generation."""
+"""Semantic comment drafting from Common IR.
+
+This module does not decide source insertion positions or comment syntax. The
+canonical source-rewrite candidate is ``Src.models.CommentCandidate``.
+"""
 
 from __future__ import annotations
 
@@ -7,38 +11,49 @@ from dataclasses import dataclass
 
 from Src.analyzers.ir import CodeEntity, EntityKind, ModuleIR
 from Src.analyzers.ir_queries import qualified_name
+from Src.models.comments import CommentTarget
 
 
 @dataclass(frozen=True, slots=True)
-class CommentCandidate:
-    """A single line comment to insert before a source entity."""
+class CommentDraft:
+    """Language-independent semantic text proposed for one Common IR entity."""
 
-    line: int
-    indent: int
+    target: CommentTarget
+    name: str
     text: str
     entity: str
 
 
-class RuleBasedCommentGenerator:
-    """Generate concise role comments without requiring an LLM."""
+class RuleBasedCommentDraftGenerator:
+    """Generate semantic comment drafts without source rewrite information."""
 
-    def generate(self, module: ModuleIR) -> list[CommentCandidate]:
-        candidates: list[CommentCandidate] = []
+    def generate(self, module: ModuleIR) -> list[CommentDraft]:
+        drafts: list[CommentDraft] = []
         for entity in module.entities:
             if entity.docstring:
                 continue
             text = self._describe(entity)
             if not text:
                 continue
-            candidates.append(
-                CommentCandidate(
-                    line=entity.line,
-                    indent=entity.indent,
+            drafts.append(
+                CommentDraft(
+                    target=self._target(entity),
+                    name=entity.name,
                     text=text,
                     entity=qualified_name(entity),
                 )
             )
-        return candidates
+        return drafts
+
+    @staticmethod
+    def _target(entity: CodeEntity) -> CommentTarget:
+        if entity.kind is EntityKind.CLASS:
+            return CommentTarget.CLASS
+        if entity.kind is EntityKind.METHOD:
+            return CommentTarget.METHOD
+        if entity.kind is EntityKind.FUNCTION:
+            return CommentTarget.FUNCTION
+        return CommentTarget.MODULE
 
     def _describe(self, entity: CodeEntity) -> str:
         words = self._words(entity.name)
@@ -81,3 +96,7 @@ class RuleBasedCommentGenerator:
     def _words(name: str) -> list[str]:
         normalized = re.sub(r"([a-z0-9])([A-Z])", r"\1_\2", name).strip("_")
         return [word.lower() for word in normalized.split("_") if word]
+
+
+# Compatibility alias for callers that used the experimental Common IR generator.
+RuleBasedCommentGenerator = RuleBasedCommentDraftGenerator
