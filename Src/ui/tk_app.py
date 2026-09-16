@@ -22,7 +22,7 @@ _OPERATION_CLASS_DIAGRAM = "Class diagrams (Mermaid)"
 _OPERATION_OBJECT_DIAGRAM = "Object diagrams (Mermaid)"
 _OPERATION_SEQUENCE_DIAGRAM = "Sequence diagrams (Mermaid)"
 _OPERATION_COMMUNICATION_DIAGRAM = "Communication diagrams (Mermaid)"
-_OPERATION_RESPONSIBILITY = "Class responsibility table"
+_OPERATION_RESPONSIBILITY = "Class responsibility tables"
 _OPERATION_CI = "GitHub Actions CI graph"
 _OPERATIONS = (
     _OPERATION_COMMENTS,
@@ -216,40 +216,45 @@ class AtlasTkApp:
                 content = result.content
                 result_format = result.format
             elif operation == _OPERATION_CLASS_DIAGRAM:
-                diagrams = self.service.generate_class_diagrams(SourceAnalysisRequest(path, language))
-                self.last_diagram_set = diagrams
+                outputs = self.service.generate_class_diagrams(SourceAnalysisRequest(path, language))
+                self.last_diagram_set = outputs
                 self.last_diagram_category = "class_diagrams"
-                content = self._diagram_set_text(diagrams)
+                content = self._output_set_text(outputs)
                 result_format = "mermaid-bundle"
             elif operation == _OPERATION_OBJECT_DIAGRAM:
-                diagrams = self.service.generate_object_diagrams(SourceAnalysisRequest(path, language))
-                self.last_diagram_set = diagrams
+                outputs = self.service.generate_object_diagrams(SourceAnalysisRequest(path, language))
+                self.last_diagram_set = outputs
                 self.last_diagram_category = "object_diagrams"
-                content = self._diagram_set_text(diagrams)
+                content = self._output_set_text(outputs)
                 result_format = "mermaid-bundle"
             elif operation == _OPERATION_SEQUENCE_DIAGRAM:
-                diagrams = self.service.generate_sequence_diagrams(
+                outputs = self.service.generate_sequence_diagrams(
                     SourceAnalysisRequest(path, language),
                     show_duplicate_calls=self.sequence_duplicate_var.get(),
                     show_returns=self.sequence_returns_var.get(),
                 )
-                self.last_diagram_set = diagrams
+                self.last_diagram_set = outputs
                 self.last_diagram_category = "sequence_diagrams"
-                content = self._diagram_set_text(diagrams)
+                content = self._output_set_text(outputs)
                 result_format = "mermaid-bundle"
             elif operation == _OPERATION_COMMUNICATION_DIAGRAM:
-                diagrams = self.service.generate_communication_diagrams(
+                outputs = self.service.generate_communication_diagrams(
                     SourceAnalysisRequest(path, language),
                     show_duplicate_calls=self.sequence_duplicate_var.get(),
                 )
-                self.last_diagram_set = diagrams
+                self.last_diagram_set = outputs
                 self.last_diagram_category = "communication_diagrams"
-                content = self._diagram_set_text(diagrams)
+                content = self._output_set_text(outputs)
                 result_format = "mermaid-bundle"
             elif operation == _OPERATION_RESPONSIBILITY:
-                result = self.service.generate_responsibility_table(SourceAnalysisRequest(path, language))
-                content = result.content
-                result_format = result.format
+                outputs = self.service.generate_responsibility_tables(
+                    SourceAnalysisRequest(path, language),
+                    output_format="markdown",
+                )
+                self.last_diagram_set = outputs
+                self.last_diagram_category = "responsibility_tables"
+                content = self._output_set_text(outputs)
+                result_format = "markdown-bundle"
             elif operation == _OPERATION_CI:
                 if path.suffix.lower() not in {".yml", ".yaml"}:
                     raise ValueError("CI analysis expects a GitHub Actions YAML file.")
@@ -269,12 +274,18 @@ class AtlasTkApp:
         self.status_var.set(f"Completed: {operation} ({result_format}).")
 
     @staticmethod
-    def _diagram_set_text(result: DiagramSetResult) -> str:
+    def _output_set_text(result: DiagramSetResult) -> str:
         if not result.outputs:
-            return "No diagrams were generated.\n"
+            return "No outputs were generated.\n"
         sections = []
         for output in result.outputs:
-            sections.append(f"%% {output.name}\n{output.content.rstrip()}")
+            if output.format == "mermaid":
+                header = f"%% {output.name}"
+            elif output.format == "markdown":
+                header = f"## {output.name}"
+            else:
+                header = f"# {output.name}"
+            sections.append(f"{header}\n{output.content.rstrip()}")
         return "\n\n".join(sections) + "\n"
 
     def _show_result(self, content: str) -> None:
@@ -297,7 +308,7 @@ class AtlasTkApp:
                 self.last_diagram_set,
                 category=self.last_diagram_category,
             )
-            self.status_var.set(f"Saved {len(paths)} diagram(s) under {selected}")
+            self.status_var.set(f"Saved {len(paths)} output file(s) under {selected}")
             return
 
         extension = {
