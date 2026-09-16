@@ -19,6 +19,7 @@ class CallEdge:
 @dataclass(slots=True)
 class CallGraph:
     edges: list[CallEdge] = field(default_factory=list)
+    explicit_nodes: set[str] = field(default_factory=set)
 
     @classmethod
     def from_module(cls, module: ModuleIR) -> "CallGraph":
@@ -30,7 +31,9 @@ class CallGraph:
 
     @property
     def nodes(self) -> set[str]:
-        return {name for edge in self.edges for name in (edge.caller, edge.callee)}
+        return self.explicit_nodes | {
+            name for edge in self.edges for name in (edge.caller, edge.callee)
+        }
 
     def fan_in(self) -> dict[str, int]:
         callers: dict[str, set[str]] = defaultdict(set)
@@ -73,7 +76,7 @@ class CallGraph:
                     visited_depth[edge.callee] = next_depth
                     queue.append((edge.callee, next_depth))
 
-        return CallGraph(selected)
+        return CallGraph(selected, explicit_nodes=set(visited_depth))
 
     def high_fan_in_nodes(self, threshold: int = 3) -> set[str]:
         if threshold < 1:
