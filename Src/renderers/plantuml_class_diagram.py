@@ -24,7 +24,7 @@ def _quote(value: str) -> str:
     return value.replace("\\", "\\\\").replace('"', '\\"')
 
 
-def render_plantuml_class_diagram(diagram: ClassDiagram) -> str:
+def render_class_diagram(diagram: ClassDiagram) -> str:
     """Render a renderer-neutral class diagram as PlantUML."""
 
     aliases = {node.name: _alias(node.name) for node in diagram.nodes}
@@ -53,3 +53,6 @@ def render_plantuml_class_diagram(diagram: ClassDiagram) -> str:
 
     lines.append("@enduml")
     return "\n".join(lines) + "\n"
+
+
+render_plantuml_class_diagram = render_class_diagram
