@@ -13,6 +13,8 @@ from Src.analyzers.ir import CodeEntity, ModuleIR
 from Src.analyzers.ir_queries import classes, qualified_name
 from Src.analyzers.partition import partition_graph
 from Src.generators.output_names import stable_output_name
+from Src.generators.series_layout import regular_placement, shared_placement
+from Src.models.output_layout import OutputPlacement
 
 
 @dataclass(frozen=True, slots=True)
@@ -30,7 +32,8 @@ class ResponsibilityTable:
 @dataclass(frozen=True, slots=True)
 class ResponsibilityTableBundle:
     tables: tuple[ResponsibilityTable, ...]
-    statistics: dict[str, int | tuple[int, ...]]
+    statistics: dict[str, int | float | tuple[int, ...]]
+    placements: tuple[OutputPlacement, ...] = ()
 
 
 def _words(name: str) -> list[str]:
@@ -100,34 +103,33 @@ def build_responsibility_table_bundle(
     partition = partition_graph(graph, fan_in_threshold=fan_in_threshold)
 
     tables: list[ResponsibilityTable] = []
-    for index, series in enumerate(partition.series, start=1):
+    placements: list[OutputPlacement] = []
+    for series_index, series in enumerate(partition.series):
         selected = tuple(by_name[name] for name in series if name in by_name)
         if not selected:
             continue
-        root = selected[0].class_name
-        tables.append(
-            ResponsibilityTable(
-                name=stable_output_name(
-                    f"series_{index}",
-                    root,
-                    fallback="responsibility",
-                ),
-                rows=selected,
-            )
+        root = partition.series_roots[series_index]
+        name = stable_output_name(
+            f"series_{series_index + 1}",
+            root,
+            fallback="responsibility",
         )
+        tables.append(ResponsibilityTable(name=name, rows=selected))
+        placements.append(regular_placement(name, partition, series_index))
 
     for shared in partition.shared:
         row = by_name.get(shared)
         if row is None:
             continue
-        tables.append(
-            ResponsibilityTable(
-                name=stable_output_name("shared", shared, fallback="responsibility"),
-                rows=(row,),
-            )
-        )
+        name = stable_output_name("shared", shared, fallback="responsibility")
+        tables.append(ResponsibilityTable(name=name, rows=(row,)))
+        placements.append(shared_placement(name, shared))
 
-    return ResponsibilityTableBundle(tuple(tables), partition.statistics)
+    return ResponsibilityTableBundle(
+        tuple(tables),
+        partition.statistics,
+        tuple(placements),
+    )
 
 
 def partitions(module: ModuleIR) -> list[list[ResponsibilityRow]]:
