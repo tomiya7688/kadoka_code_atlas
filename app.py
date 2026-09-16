@@ -3,7 +3,12 @@ from __future__ import annotations
 import argparse
 import sys
 from pathlib import Path
-from Src.process.application import ApplicationService, CIRequest, CommentRequest
+from Src.process.application import (
+    ApplicationService,
+    CIRequest,
+    CommentRequest,
+    SourceAnalysisRequest,
+)
 from Src.process.config_service import load_config
 from Src.process.deployment_service import DeploymentAnalysisRequest, DeploymentService
 from Src.process.timing_service import TimingAnalysisRequest, TimingService
@@ -34,6 +39,13 @@ def _launch_gui() -> int:
 
     launch_gui(_application_service())
     return 0
+
+
+def _print_outputs(result: object) -> None:
+    for output in getattr(result, "outputs", ()):
+        marker = "%%" if output.format == "mermaid" else "'"
+        print(f"{marker} {output.name}")
+        print(output.content, end="")
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -67,6 +79,19 @@ def main(argv: list[str] | None = None) -> int:
     use_cases.add_argument("--language", help="Adapter name; inferred from the extension.")
     use_cases.add_argument("--output-dir")
     use_cases.add_argument("--max-depth", type=int, default=5)
+    class_diagram = sub.add_parser("class-diagram", help="Generate class diagrams.")
+    class_diagram.add_argument("source")
+    class_diagram.add_argument("--language", help="Adapter name; inferred from the extension.")
+    class_diagram.add_argument("--renderer", choices=("mermaid", "plantuml"))
+    class_diagram.add_argument("--output-dir")
+    sequence_diagram = sub.add_parser("sequence-diagram", help="Generate sequence diagrams.")
+    sequence_diagram.add_argument("source")
+    sequence_diagram.add_argument("--language", help="Adapter name; inferred from the extension.")
+    sequence_diagram.add_argument("--renderer", choices=("mermaid", "plantuml"))
+    sequence_diagram.add_argument("--output-dir")
+    sequence_diagram.add_argument("--max-depth", type=int, default=8)
+    sequence_diagram.add_argument("--hide-duplicate-calls", action="store_true")
+    sequence_diagram.add_argument("--show-returns", action="store_true")
     args = parser.parse_args(arguments)
 
     if args.version:
@@ -74,7 +99,16 @@ def main(argv: list[str] | None = None) -> int:
         return 0
     if args.command == "gui":
         return _launch_gui()
-    if args.command not in {"comment", "ci", "deployment", "timing", "use-cases"}:
+    supported = {
+        "comment",
+        "ci",
+        "deployment",
+        "timing",
+        "use-cases",
+        "class-diagram",
+        "sequence-diagram",
+    }
+    if args.command not in supported:
         parser.print_help()
         return 0
 
@@ -88,9 +122,7 @@ def main(argv: list[str] | None = None) -> int:
             for path in paths:
                 print(path)
         else:
-            for output in result.outputs:
-                print(f"%% {output.name}")
-                print(output.content, end="")
+            _print_outputs(result)
         return 0
 
     service = _application_service()
@@ -106,9 +138,7 @@ def main(argv: list[str] | None = None) -> int:
             for output_path in paths:
                 print(output_path)
         else:
-            for output in result.outputs:
-                print(f"%% {output.name}")
-                print(output.content, end="")
+            _print_outputs(result)
         return 0
 
     if args.command == "use-cases":
@@ -126,9 +156,33 @@ def main(argv: list[str] | None = None) -> int:
             for output_path in paths:
                 print(output_path)
         else:
-            for output in result.outputs:
-                print(f"%% {output.name}")
-                print(output.content, end="")
+            _print_outputs(result)
+        return 0
+
+    if args.command in {"class-diagram", "sequence-diagram"}:
+        path = Path(args.source)
+        language = args.language or service.detect_language(path)
+        if language == "unknown":
+            parser.error(f"unsupported source file type: {path.suffix or path.name}")
+        request = SourceAnalysisRequest(path, language)
+        if args.command == "class-diagram":
+            result = service.generate_class_diagrams(request, renderer=args.renderer)
+            category = "class_diagrams"
+        else:
+            result = service.generate_sequence_diagrams(
+                request,
+                renderer=args.renderer,
+                max_depth=args.max_depth,
+                show_duplicate_calls=not args.hide_duplicate_calls,
+                show_returns=args.show_returns,
+            )
+            category = "sequence_diagrams"
+        if args.output_dir:
+            paths = service.save_diagram_set(Path(args.output_dir), result, category=category)
+            for output_path in paths:
+                print(output_path)
+        else:
+            _print_outputs(result)
         return 0
 
     if args.command == "ci":
