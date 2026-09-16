@@ -1,3 +1,5 @@
+from pathlib import Path
+
 from Src.analyzers.ci import parse_github_actions
 
 
@@ -27,3 +29,72 @@ jobs:
     assert workflow.jobs[0].steps[0].command == "python -m pip install -e ."
     assert workflow.jobs[0].steps[1].action == "astral-sh/ruff-action@v3"
     assert workflow.jobs[1].needs == ("test",)
+
+
+def test_github_actions_supports_multiline_triggers_commands_needs_and_unnamed_steps() -> None:
+    workflow = parse_github_actions("""
+name: Standard YAML
+on:
+  push:
+  pull_request:
+jobs:
+  verify:
+    needs:
+      - lint
+      - test
+    steps:
+      - run: |
+          python -m pytest
+          python -m build
+      - uses: actions/checkout@v4
+  lint:
+    steps: []
+  test:
+    needs: lint
+    steps:
+      - name: Tests
+        run: >
+          python -m pytest
+          -q
+""")
+
+    assert workflow.trigger == ("push", "pull_request")
+    assert [job.name for job in workflow.jobs] == ["verify", "lint", "test"]
+    assert workflow.jobs[0].needs == ("lint", "test")
+    assert workflow.jobs[0].steps[0].name == "run"
+    assert "python -m pytest" in (workflow.jobs[0].steps[0].command or "")
+    assert "python -m build" in (workflow.jobs[0].steps[0].command or "")
+    assert workflow.jobs[0].steps[1].name == "uses"
+    assert workflow.jobs[0].steps[1].action == "actions/checkout@v4"
+    assert workflow.jobs[2].needs == ("lint",)
+    assert "python -m pytest -q" in (workflow.jobs[2].steps[0].command or "")
+
+
+def test_github_actions_only_treats_jobs_mapping_as_jobs() -> None:
+    workflow = parse_github_actions("""
+on:
+  push:
+  workflow_dispatch:
+jobs:
+  test:
+    steps:
+      - run: pytest
+""")
+
+    assert workflow.trigger == ("push", "workflow_dispatch")
+    assert [job.name for job in workflow.jobs] == ["test"]
+
+
+def test_kadoka_ci_workflow_parses_as_regression_fixture() -> None:
+    source = Path(".github/workflows/ci.yml").read_text(encoding="utf-8")
+    workflow = parse_github_actions(source)
+
+    assert workflow.name == "CI"
+    assert workflow.trigger == ("push", "pull_request")
+    jobs = {job.name: job for job in workflow.jobs}
+    assert {"test", "oop-design"} <= set(jobs)
+    test_steps = {step.name: step for step in jobs["test"].steps}
+    install = test_steps["Install project and test tooling"]
+    assert "python -m pip install --upgrade pip" in (install.command or "")
+    assert 'python -m pip install -e ".[test]"' in (install.command or "")
+    assert test_steps["Run full test suite"].command == "python -m pytest"
