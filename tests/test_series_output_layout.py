@@ -3,7 +3,12 @@ from tempfile import TemporaryDirectory
 
 from Src.generators.call_graph import build_call_graph_bundle
 from Src.languages.python import PythonLanguageAdapter
-from Src.process.application import ApplicationService, SourceAnalysisRequest
+from Src.process.application import (
+    ApplicationService,
+    DiagramSetResult,
+    GeneratedOutput,
+    SourceAnalysisRequest,
+)
 
 
 def test_recursive_partition_exposes_series_output_placement_metadata() -> None:
@@ -91,3 +96,25 @@ def test_renderer_choice_does_not_change_sequence_series_folder() -> None:
             item.relative_dir for item in plantuml.outputs
         ]
         assert all(item.relative_dir for item in mermaid.outputs)
+
+
+def test_future_multi_output_generator_can_use_common_save_contract() -> None:
+    with TemporaryDirectory() as folder:
+        root = Path(folder)
+        result = DiagramSetResult(
+            outputs=(
+                GeneratedOutput("first", "flowchart LR\n", "mermaid", ("series_a",)),
+                GeneratedOutput("second", "flowchart LR\n", "mermaid", ("series_b",)),
+            ),
+            statistics={},
+        )
+
+        paths = ApplicationService().save_diagram_set(
+            root,
+            result,
+            category="flowcharts",
+        )
+
+        assert {path.parent.name for path in paths} == {"series_a", "series_b"}
+        assert all(path.parent.parent.name == "flowcharts" for path in paths)
+        assert not list((root / "flowcharts").glob("*.mmd"))
