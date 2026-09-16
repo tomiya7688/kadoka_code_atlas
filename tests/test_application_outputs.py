@@ -62,7 +62,9 @@ def test_application_service_generates_and_saves_partitioned_responsibility_tabl
 
         assert len(result.outputs) == 2
         assert all(output.format == "markdown" for output in result.outputs)
-        assert all(path.parent.name == "responsibility_tables" for path in paths)
+        assert all(path.parent.parent.name == "responsibility_tables" for path in paths)
+        assert all(path.parent.name.startswith("series_") for path in paths)
+        assert not list((root / "output" / "responsibility_tables").glob("*.md"))
         assert all(path.suffix == ".md" and path.is_file() for path in paths)
         assert "| Class | Responsibility |" in paths[0].read_text(encoding="utf-8")
 
@@ -108,7 +110,9 @@ def test_application_service_generates_and_saves_object_diagrams():
 
         assert result.outputs
         assert all(output.format == "mermaid" for output in result.outputs)
-        assert all(path.parent.name == "object_diagrams" for path in paths)
+        assert all(path.parent.parent.name == "object_diagrams" for path in paths)
+        assert all(path.parent.name.startswith("series_") for path in paths)
+        assert not list((root / "output" / "object_diagrams").glob("*.mmd"))
         assert all(path.suffix == ".mmd" and path.is_file() for path in paths)
         content = paths[0].read_text(encoding="utf-8")
         assert "service : Service" in content
