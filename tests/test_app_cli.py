@@ -142,8 +142,9 @@ def test_class_diagram_cli_writes_plantuml_folder():
                 str(output),
             ]
         ) == 0
-        diagrams = list((output / "class_diagrams").glob("*.puml"))
+        diagrams = list((output / "class_diagrams").rglob("*.puml"))
         assert diagrams
+        assert diagrams[0].parent.name.startswith("series_")
         assert diagrams[0].read_text(encoding="utf-8").startswith("@startuml\n")
 
 
@@ -168,8 +169,9 @@ def test_sequence_diagram_cli_writes_plantuml_with_returns():
                 str(output),
             ]
         ) == 0
-        diagrams = list((output / "sequence_diagrams").glob("*.puml"))
+        diagrams = list((output / "sequence_diagrams").rglob("*.puml"))
         assert diagrams
+        assert diagrams[0].parent.name.startswith("series_")
         content = diagrams[0].read_text(encoding="utf-8")
         assert content.startswith("@startuml\n")
         assert " --> " in content

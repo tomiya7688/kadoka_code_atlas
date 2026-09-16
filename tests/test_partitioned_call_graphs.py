@@ -106,6 +106,8 @@ def test_call_graph_service_saves_all_outputs_under_call_graphs_folder() -> None
         paths = service.save(output, result)
 
         assert paths
-        assert all(path.parent == output / "call_graphs" for path in paths)
+        assert all(path.parent.parent == output / "call_graphs" for path in paths)
+        assert all(path.parent.name.startswith("series_") for path in paths)
+        assert not list((output / "call_graphs").glob("*.mmd"))
         assert all(path.suffix == ".mmd" for path in paths)
         assert "flowchart LR" in paths[0].read_text(encoding="utf-8")

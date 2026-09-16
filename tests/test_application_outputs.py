@@ -85,7 +85,9 @@ def test_application_service_generates_and_saves_partitioned_class_diagrams():
 
         assert result.outputs
         assert all(output.format == "mermaid" for output in result.outputs)
-        assert all(path.parent.name == "class_diagrams" for path in paths)
+        assert all(path.parent.parent.name == "class_diagrams" for path in paths)
+        assert all(path.parent.name.startswith("series_") for path in paths)
+        assert not list((root / "output" / "class_diagrams").glob("*.mmd"))
         assert all(path.suffix == ".mmd" and path.is_file() for path in paths)
         assert "classDiagram" in paths[0].read_text(encoding="utf-8")
 
@@ -131,7 +133,9 @@ def test_application_service_generates_and_saves_sequence_diagrams():
 
         assert result.outputs
         assert all(output.format == "mermaid" for output in result.outputs)
-        assert all(path.parent.name == "sequence_diagrams" for path in paths)
+        assert all(path.parent.parent.name == "sequence_diagrams" for path in paths)
+        assert all(path.parent.name.startswith("series_") for path in paths)
+        assert not list((root / "output" / "sequence_diagrams").glob("*.mmd"))
         assert all(path.suffix == ".mmd" and path.is_file() for path in paths)
         assert "sequenceDiagram" in paths[0].read_text(encoding="utf-8")
 

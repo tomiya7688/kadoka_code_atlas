@@ -8,6 +8,8 @@ from Src.analyzers.call_graph import CallGraph
 from Src.analyzers.ir import ModuleIR
 from Src.analyzers.partition import partition_graph
 from Src.generators.output_names import stable_output_name
+from Src.generators.series_layout import regular_placement, shared_placement
+from Src.models.output_layout import OutputPlacement
 from Src.renderers.mermaid_call_graph import render_call_graph
 
 
@@ -21,6 +23,7 @@ class CallGraphDiagram:
 class CallGraphBundle:
     diagrams: tuple[CallGraphDiagram, ...]
     statistics: dict[str, int | float | tuple[int, ...]]
+    placements: tuple[OutputPlacement, ...] = ()
 
 
 def build_call_graph_bundle(
@@ -43,7 +46,8 @@ def build_call_graph_bundle(
     }
 
     diagrams: list[CallGraphDiagram] = []
-    for index, series in enumerate(partition.series, start=1):
+    placements: list[OutputPlacement] = []
+    for series_index, series in enumerate(partition.series):
         selected = set(series)
         edges = [
             edge
@@ -58,24 +62,22 @@ def build_call_graph_bundle(
         boundary_targets = {
             edge.callee for edge in edges if edge.callee not in selected
         }
-        root_name = (
-            partition.series_roots[index - 1]
-            if index - 1 < len(partition.series_roots)
-            else series[0]
+        root_name = partition.series_roots[series_index]
+        name = stable_output_name(
+            f"series_{series_index + 1}",
+            root_name,
+            fallback="call_graph",
         )
         diagrams.append(
             CallGraphDiagram(
-                stable_output_name(
-                    f"series_{index}",
-                    root_name,
-                    fallback="call_graph",
-                ),
+                name,
                 CallGraph(
                     edges=edges,
                     explicit_nodes=selected | boundary_targets,
                 ),
             )
         )
+        placements.append(regular_placement(name, partition, series_index))
 
     for shared_node in partition.shared:
         edges = [
@@ -88,14 +90,20 @@ def build_call_graph_bundle(
             *(edge.caller for edge in edges),
             *(edge.callee for edge in edges),
         }
+        name = stable_output_name("shared", shared_node, fallback="call_graph")
         diagrams.append(
             CallGraphDiagram(
-                stable_output_name("shared", shared_node, fallback="call_graph"),
+                name,
                 CallGraph(edges=edges, explicit_nodes=explicit_nodes),
             )
         )
+        placements.append(shared_placement(name, shared_node))
 
-    return CallGraphBundle(tuple(diagrams), partition.statistics)
+    return CallGraphBundle(
+        tuple(diagrams),
+        partition.statistics,
+        tuple(placements),
+    )
 
 
 def generate_call_graph_mermaid(
