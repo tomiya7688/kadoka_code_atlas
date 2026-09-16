@@ -6,6 +6,10 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from Src.analyzers.ci import parse_github_actions
+from Src.analyzers.component_dependencies import (
+    ComponentDependencyUnit,
+    build_component_dependency_graph,
+)
 from Src.analyzers.package_dependencies import (
     ModuleDependencyUnit,
     build_package_dependency_graph,
@@ -20,6 +24,7 @@ from Src.evaluators.design_quality import (
 from Src.generators import CommentGenerator, generate_call_graph_mermaid, rows, to_csv, to_markdown
 from Src.generators.class_diagram import ClassDiagramOptions, build_class_diagram_bundle
 from Src.generators.communication_diagram import build_communication_diagram_bundle
+from Src.generators.component_diagram import build_component_diagram_bundle
 from Src.generators.object_diagram import build_object_diagram_bundle
 from Src.generators.package_diagram import build_package_diagram_bundle
 from Src.generators.responsibility import build_responsibility_table_bundle
@@ -32,6 +37,7 @@ from Src.renderers import render_ci_workflow
 from Src.renderers.design_quality_markdown import render_design_quality_markdown
 from Src.renderers.mermaid_class_diagram import render_class_diagram
 from Src.renderers.mermaid_communication_diagram import render_communication_diagram
+from Src.renderers.mermaid_component_diagram import render_component_diagram
 from Src.renderers.mermaid_object_diagram import render_object_diagram
 from Src.renderers.mermaid_package_diagram import render_package_diagram
 from Src.renderers.mermaid_sequence_diagram import render_sequence_diagram
@@ -227,32 +233,39 @@ class ApplicationService:
         *,
         fan_in_threshold: int = 3,
     ) -> DiagramSetResult:
-        language = request.language.lower().lstrip(".")
-        if language not in {"python", "py"}:
-            raise ValueError("Package analysis is currently available for Python projects only.")
-        if not request.root.is_dir():
-            raise ValueError("Package analysis expects a project folder.")
-
-        adapter = PythonProjectLanguageAdapter()
-        units: list[ModuleDependencyUnit] = []
-        for path in discover_supported_files(request.root):
-            if path.suffix.lower() != ".py":
-                continue
-            module = adapter.parse(read_text(path))
-            units.append(
-                ModuleDependencyUnit(
-                    self._python_module_name(request.root, path),
-                    module.imports,
-                    path.name == "__init__.py",
-                )
-            )
-        graph = build_package_dependency_graph(units)
+        project_units = self._python_project_units(request)
+        graph = build_package_dependency_graph([unit for _, unit in project_units])
         bundle = build_package_diagram_bundle(
             graph,
             fan_in_threshold=fan_in_threshold,
         )
         outputs = tuple(
             GeneratedOutput(diagram.name, render_package_diagram(diagram), "mermaid")
+            for diagram in bundle.diagrams
+        )
+        return DiagramSetResult(outputs, bundle.statistics)
+
+    def generate_component_diagrams(
+        self,
+        request: ProjectAnalysisRequest,
+        *,
+        fan_in_threshold: int = 3,
+    ) -> DiagramSetResult:
+        project_units = self._python_project_units(request)
+        units = [
+            ComponentDependencyUnit(
+                unit,
+                self._python_component_name(request.root, path),
+            )
+            for path, unit in project_units
+        ]
+        graph = build_component_dependency_graph(units)
+        bundle = build_component_diagram_bundle(
+            graph,
+            fan_in_threshold=fan_in_threshold,
+        )
+        outputs = tuple(
+            GeneratedOutput(diagram.name, render_component_diagram(diagram), "mermaid")
             for diagram in bundle.diagrams
         )
         return DiagramSetResult(outputs, bundle.statistics)
@@ -371,6 +384,42 @@ class ApplicationService:
         else:
             parts[-1] = stem
         return ".".join(parts) or root.name
+
+    @staticmethod
+    def _python_component_name(root: Path, path: Path) -> str:
+        relative = path.relative_to(root)
+        if len(relative.parts) == 1:
+            return root.name if path.name == "__init__.py" else path.stem
+        return ".".join(relative.parts[:-1])
+
+    @classmethod
+    def _python_project_units(
+        cls,
+        request: ProjectAnalysisRequest,
+    ) -> list[tuple[Path, ModuleDependencyUnit]]:
+        language = request.language.lower().lstrip(".")
+        if language not in {"python", "py"}:
+            raise ValueError("Project dependency analysis is currently available for Python projects only.")
+        if not request.root.is_dir():
+            raise ValueError("Project dependency analysis expects a project folder.")
+
+        adapter = PythonProjectLanguageAdapter()
+        units: list[tuple[Path, ModuleDependencyUnit]] = []
+        for path in discover_supported_files(request.root):
+            if path.suffix.lower() != ".py":
+                continue
+            module = adapter.parse(read_text(path))
+            units.append(
+                (
+                    path,
+                    ModuleDependencyUnit(
+                        cls._python_module_name(request.root, path),
+                        module.imports,
+                        path.name == "__init__.py",
+                    ),
+                )
+            )
+        return units
 
     @staticmethod
     def _python_module(request: SourceAnalysisRequest):
