@@ -19,6 +19,34 @@ jobs:
     assert evaluate_ci(workflow) == ()
 
 
+def test_ci_evaluator_accepts_test_before_build_in_same_job() -> None:
+    workflow = parse_github_actions("""
+jobs:
+  verify:
+    steps:
+      - name: test
+        run: pytest
+      - name: build
+        run: python -m build
+""")
+
+    assert evaluate_ci(workflow) == ()
+
+
+def test_ci_evaluator_reports_build_before_test_in_same_job() -> None:
+    workflow = parse_github_actions("""
+jobs:
+  verify:
+    steps:
+      - name: build
+        run: python -m build
+      - name: test
+        run: pytest
+""")
+
+    assert [finding.code for finding in evaluate_ci(workflow)] == ["build-without-test-dependency"]
+
+
 def test_ci_evaluator_reports_missing_test_and_duplicate_commands() -> None:
     workflow = parse_github_actions("""
 jobs:
