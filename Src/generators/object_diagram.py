@@ -6,6 +6,7 @@ from Src.analyzers.ir import ModuleIR
 from Src.analyzers.object_relations import build_object_relation_graph, object_key
 from Src.analyzers.partition import partition_graph
 from Src.generators.output_names import stable_output_name
+from Src.generators.series_layout import regular_placement, shared_placement
 from Src.models.object_diagram import (
     ObjectDiagram,
     ObjectDiagramBundle,
@@ -13,6 +14,7 @@ from Src.models.object_diagram import (
     ObjectNode,
     ObjectReference,
 )
+from Src.models.output_layout import OutputPlacement
 
 
 def build_object_diagram_bundle(
@@ -39,21 +41,28 @@ def build_object_diagram_bundle(
         return ObjectReference(edge.caller, edge.callee, edge.label)
 
     diagrams: list[ObjectDiagram] = []
-    for index, series in enumerate(partition.series, start=1):
+    placements: list[OutputPlacement] = []
+    for series_index, series in enumerate(partition.series):
         selected = set(series)
         references = tuple(
             reference_model(edge)
             for edge in graph.edges
             if edge.caller in selected and edge.callee in selected
         )
-        root = series[0]
+        root = partition.series_roots[series_index]
+        name = stable_output_name(
+            f"series_{series_index + 1}",
+            root,
+            fallback="object",
+        )
         diagrams.append(
             ObjectDiagram(
-                name=stable_output_name(f"series_{index}", root, fallback="object"),
+                name=name,
                 nodes=tuple(node_model(key) for key in series),
                 references=references,
             )
         )
+        placements.append(regular_placement(name, partition, series_index))
 
     for shared in partition.shared:
         related = [
@@ -65,12 +74,18 @@ def build_object_diagram_bundle(
         for edge in related:
             selected.add(edge.caller)
             selected.add(edge.callee)
+        name = stable_output_name("shared", shared, fallback="object")
         diagrams.append(
             ObjectDiagram(
-                name=stable_output_name("shared", shared, fallback="object"),
+                name=name,
                 nodes=tuple(node_model(key) for key in sorted(selected)),
                 references=tuple(reference_model(edge) for edge in related),
             )
         )
+        placements.append(shared_placement(name, shared))
 
-    return ObjectDiagramBundle(tuple(diagrams), partition.statistics)
+    return ObjectDiagramBundle(
+        tuple(diagrams),
+        partition.statistics,
+        tuple(placements),
+    )
