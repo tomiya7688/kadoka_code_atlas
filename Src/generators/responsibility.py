@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass
 
 from Src.analyzers.class_relations import ClassRelationGraph, build_class_relation_graph
 from Src.analyzers.ir import CodeEntity, ModuleIR
@@ -12,25 +11,21 @@ from Src.analyzers.partition import partition_graph
 from Src.generators.output_names import stable_output_name
 from Src.generators.series_layout import regular_placement, shared_placement
 from Src.models.output_layout import OutputPlacement
+from Src.models.responsibility import ResponsibilityRow, ResponsibilityTable
 
 
-@dataclass(frozen=True, slots=True)
-class ResponsibilityRow:
-    class_name: str
-    responsibility: str
-
-
-@dataclass(frozen=True, slots=True)
-class ResponsibilityTable:
-    name: str
-    rows: tuple[ResponsibilityRow, ...]
-
-
-@dataclass(frozen=True, slots=True)
 class ResponsibilityTableBundle:
-    tables: tuple[ResponsibilityTable, ...]
-    statistics: dict[str, int | float | tuple[int, ...]]
-    placements: tuple[OutputPlacement, ...] = ()
+    __slots__ = ("tables", "statistics", "placements")
+
+    def __init__(
+        self,
+        tables: tuple[ResponsibilityTable, ...],
+        statistics: dict[str, int | float | tuple[int, ...]],
+        placements: tuple[OutputPlacement, ...] = (),
+    ) -> None:
+        self.tables = tables
+        self.statistics = statistics
+        self.placements = placements
 
 
 def _words(name: str) -> list[str]:
