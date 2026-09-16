@@ -9,6 +9,10 @@ from Src.analyzers.ci import parse_github_actions
 from Src.data.files import read_text, write_text
 from Src.data.project_files import detect_language, discover_supported_files
 from Src.evaluators import evaluate_ci
+from Src.evaluators.design_quality import (
+    DesignQualityThresholds,
+    evaluate_design_quality as evaluate_design_quality_model,
+)
 from Src.generators import CommentGenerator, generate_call_graph_mermaid, rows, to_csv, to_markdown
 from Src.generators.class_diagram import ClassDiagramOptions, build_class_diagram_bundle
 from Src.generators.communication_diagram import build_communication_diagram_bundle
@@ -18,6 +22,7 @@ from Src.generators.sequence_diagram import SequenceDiagramOptions, build_sequen
 from Src.languages.python import PythonLanguageAdapter
 from Src.models.config import AtlasConfig
 from Src.renderers import render_ci_workflow
+from Src.renderers.design_quality_markdown import render_design_quality_markdown
 from Src.renderers.mermaid_class_diagram import render_class_diagram
 from Src.renderers.mermaid_communication_diagram import render_communication_diagram
 from Src.renderers.mermaid_object_diagram import render_object_diagram
@@ -83,6 +88,25 @@ class ApplicationService:
     def analyze_ci(self, request: CIRequest) -> CIResult:
         workflow = parse_github_actions(read_text(request.source))
         return CIResult(render_ci_workflow(workflow), evaluate_ci(workflow))
+
+    def evaluate_design_quality(
+        self,
+        request: SourceAnalysisRequest,
+        *,
+        high_fan_in: int = 3,
+        high_fan_out: int = 5,
+        large_series: int = 8,
+    ) -> TextResult:
+        module = self._python_module(request)
+        report = evaluate_design_quality_model(
+            module,
+            thresholds=DesignQualityThresholds(
+                high_fan_in=high_fan_in,
+                high_fan_out=high_fan_out,
+                large_series=large_series,
+            ),
+        )
+        return TextResult(render_design_quality_markdown(report), format="markdown")
 
     def generate_call_graph(
         self,

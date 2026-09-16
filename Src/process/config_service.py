@@ -40,6 +40,7 @@ def default_capabilities() -> tuple[Capability, ...]:
         Capability("ci", "generator"),
         Capability("responsibility", "generator", ()),
         Capability("ci_quality", "evaluator", ()),
+        Capability("design_quality", "evaluator", ()),
     )
 
 
