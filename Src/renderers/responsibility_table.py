@@ -6,7 +6,7 @@ import csv
 import io
 from collections.abc import Sequence
 
-from Src.generators.responsibility import ResponsibilityRow
+from Src.models.responsibility import ResponsibilityRow
 
 
 def render_responsibility_markdown(rows: Sequence[ResponsibilityRow]) -> str:
