@@ -41,6 +41,32 @@ def test_application_service_generates_responsibility_markdown():
         assert "ConfigStore" in result.content
 
 
+def test_application_service_generates_and_saves_partitioned_responsibility_tables():
+    with TemporaryDirectory() as folder:
+        root = Path(folder)
+        source = root / "sample.py"
+        source.write_text(
+            "class Repo: pass\nclass Service:\n    def run(self): Repo()\nclass Other: pass\n",
+            encoding="utf-8",
+        )
+        service = ApplicationService()
+
+        result = service.generate_responsibility_tables(
+            SourceAnalysisRequest(source, "python")
+        )
+        paths = service.save_diagram_set(
+            root / "output",
+            result,
+            category="responsibility_tables",
+        )
+
+        assert len(result.outputs) == 2
+        assert all(output.format == "markdown" for output in result.outputs)
+        assert all(path.parent.name == "responsibility_tables" for path in paths)
+        assert all(path.suffix == ".md" and path.is_file() for path in paths)
+        assert "| Class | Responsibility |" in paths[0].read_text(encoding="utf-8")
+
+
 def test_application_service_generates_and_saves_partitioned_class_diagrams():
     with TemporaryDirectory() as folder:
         root = Path(folder)
