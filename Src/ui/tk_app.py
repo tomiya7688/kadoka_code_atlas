@@ -19,6 +19,7 @@ PROJECT_NAME = "Kadoka Code Atlas"
 _OPERATION_COMMENTS = "Generate comments"
 _OPERATION_CALL_GRAPH = "Call graph (Mermaid)"
 _OPERATION_CLASS_DIAGRAM = "Class diagrams (Mermaid)"
+_OPERATION_OBJECT_DIAGRAM = "Object diagrams (Mermaid)"
 _OPERATION_SEQUENCE_DIAGRAM = "Sequence diagrams (Mermaid)"
 _OPERATION_COMMUNICATION_DIAGRAM = "Communication diagrams (Mermaid)"
 _OPERATION_RESPONSIBILITY = "Class responsibility table"
@@ -27,6 +28,7 @@ _OPERATIONS = (
     _OPERATION_COMMENTS,
     _OPERATION_CALL_GRAPH,
     _OPERATION_CLASS_DIAGRAM,
+    _OPERATION_OBJECT_DIAGRAM,
     _OPERATION_SEQUENCE_DIAGRAM,
     _OPERATION_COMMUNICATION_DIAGRAM,
     _OPERATION_RESPONSIBILITY,
@@ -182,6 +184,7 @@ class AtlasTkApp:
         elif language != "python" and self.operation_var.get() in {
             _OPERATION_CALL_GRAPH,
             _OPERATION_CLASS_DIAGRAM,
+            _OPERATION_OBJECT_DIAGRAM,
             _OPERATION_SEQUENCE_DIAGRAM,
             _OPERATION_COMMUNICATION_DIAGRAM,
             _OPERATION_RESPONSIBILITY,
@@ -216,6 +219,12 @@ class AtlasTkApp:
                 diagrams = self.service.generate_class_diagrams(SourceAnalysisRequest(path, language))
                 self.last_diagram_set = diagrams
                 self.last_diagram_category = "class_diagrams"
+                content = self._diagram_set_text(diagrams)
+                result_format = "mermaid-bundle"
+            elif operation == _OPERATION_OBJECT_DIAGRAM:
+                diagrams = self.service.generate_object_diagrams(SourceAnalysisRequest(path, language))
+                self.last_diagram_set = diagrams
+                self.last_diagram_category = "object_diagrams"
                 content = self._diagram_set_text(diagrams)
                 result_format = "mermaid-bundle"
             elif operation == _OPERATION_SEQUENCE_DIAGRAM:
