@@ -12,9 +12,14 @@ if %errorlevel%==0 (
 %PYTHON% -m pip install -e ".[exe]"
 if errorlevel 1 exit /b 1
 
-%PYTHON% -m PyInstaller --onefile --clean --name kadoka-code-atlas -y app.py
+%PYTHON% -m PyInstaller --onedir --clean --name kadoka-code-atlas -y app.py
 if errorlevel 1 exit /b 1
 
+if exist "kadoka-code-atlas.example.json" (
+    copy /Y "kadoka-code-atlas.example.json" "dist\kadoka-code-atlas\kadoka-code-atlas.example.json" >nul
+    if errorlevel 1 exit /b 1
+)
+
 echo.
-echo EXE build completed: dist\kadoka-code-atlas.exe
+echo App build completed: dist\kadoka-code-atlas\kadoka-code-atlas.exe
 endlocal
