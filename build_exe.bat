@@ -21,6 +21,12 @@ if exist "config" (
     if errorlevel 1 exit /b 1
 )
 
+if exist "backends" (
+    if not exist "dist\kadoka-code-atlas\backends" mkdir "dist\kadoka-code-atlas\backends"
+    xcopy /E /I /Y "backends\*" "dist\kadoka-code-atlas\backends\" >nul
+    if errorlevel 1 exit /b 1
+)
+
 echo.
 echo App build completed: dist\kadoka-code-atlas\kadoka-code-atlas.exe
 endlocal

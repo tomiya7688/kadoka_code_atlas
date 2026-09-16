@@ -6,6 +6,7 @@ on:
       - "app.py"
       - "Src/**"
       - "config/**"
+      - "backends/**"
       - "pyproject.toml"
       - "build_exe.bat"
       - ".github/workflows/python-exe.yml"
@@ -37,12 +38,26 @@ jobs:
         run: |
           $exe = ".\dist\kadoka-code-atlas\kadoka-code-atlas.exe"
           $config = ".\dist\kadoka-code-atlas\config\kadoka-code-atlas.json"
+          $backendManifest = ".\dist\kadoka-code-atlas\backends\manifest.json"
           if (-not (Test-Path $exe)) {
             Write-Error "EXE not found: $exe"
             exit 1
           }
           if (-not (Test-Path $config)) {
             Write-Error "Runtime config not found: $config"
+            exit 1
+          }
+          if (-not (Test-Path $backendManifest)) {
+            Write-Error "Backend manifest not found: $backendManifest"
+            exit 1
+          }
+          $manifest = Get-Content $backendManifest -Raw | ConvertFrom-Json
+          if ($manifest.manifest_version -ne "1") {
+            Write-Error "Unexpected backend manifest version: $($manifest.manifest_version)"
+            exit 1
+          }
+          if ($manifest.parser_backend_contract_version -ne "1") {
+            Write-Error "Unexpected parser backend contract version: $($manifest.parser_backend_contract_version)"
             exit 1
           }
           $output = & $exe --version
