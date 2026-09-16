@@ -12,7 +12,6 @@ class GeneratedOutputLike(Protocol):
     name: str
     content: str
     format: str
-    relative_dir: tuple[str, ...]
 
 
 _EXTENSIONS = {
@@ -36,7 +35,8 @@ def save_generated_outputs(
     seen: set[Path] = set()
     for output in outputs:
         extension = _EXTENSIONS.get(output.format, ".txt")
-        path = target.joinpath(*output.relative_dir) / f"{output.name}{extension}"
+        relative_dir = getattr(output, "relative_dir", ())
+        path = target.joinpath(*relative_dir) / f"{output.name}{extension}"
         if path in seen:
             raise ValueError(f"Duplicate generated output path: {path}")
         seen.add(path)
