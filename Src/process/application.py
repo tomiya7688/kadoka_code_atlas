@@ -15,6 +15,7 @@ from Src.analyzers.package_dependencies import (
     build_package_dependency_graph,
 )
 from Src.data.files import read_text, write_text
+from Src.data.generated_outputs import save_generated_outputs
 from Src.data.project_files import detect_language, discover_supported_files
 from Src.evaluators import evaluate_ci
 from Src.evaluators.design_quality import (
@@ -91,12 +92,13 @@ class GeneratedOutput:
     name: str
     content: str
     format: str
+    relative_dir: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True, slots=True)
 class DiagramSetResult:
     outputs: tuple[GeneratedOutput, ...]
-    statistics: dict[str, int | tuple[int, ...]]
+    statistics: dict[str, int | float | tuple[int, ...]]
 
 
 class ApplicationService:
@@ -201,8 +203,13 @@ class ApplicationService:
         normalized = self._diagram_renderer(renderer)
         render = render_class_diagram_plantuml if normalized == "plantuml" else render_class_diagram
         outputs = tuple(
-            GeneratedOutput(diagram.name, render(diagram), normalized)
-            for diagram in bundle.diagrams
+            GeneratedOutput(
+                diagram.name,
+                render(diagram),
+                normalized,
+                placement.relative_dir,
+            )
+            for diagram, placement in zip(bundle.diagrams, bundle.placements, strict=True)
         )
         return DiagramSetResult(outputs, bundle.statistics)
 
@@ -316,8 +323,13 @@ class ApplicationService:
         normalized = self._diagram_renderer(renderer)
         render = render_sequence_diagram_plantuml if normalized == "plantuml" else render_sequence_diagram
         outputs = tuple(
-            GeneratedOutput(diagram.name, render(diagram), normalized)
-            for diagram in bundle.diagrams
+            GeneratedOutput(
+                diagram.name,
+                render(diagram),
+                normalized,
+                placement.relative_dir,
+            )
+            for diagram, placement in zip(bundle.diagrams, bundle.placements, strict=True)
         )
         return DiagramSetResult(outputs, bundle.statistics)
 
@@ -367,25 +379,7 @@ class ApplicationService:
         *,
         category: str,
     ) -> tuple[Path, ...]:
-        target = output_root / category
-        extensions = {
-            "mermaid": ".mmd",
-            "plantuml": ".puml",
-            "markdown": ".md",
-            "csv": ".csv",
-            "source": ".txt",
-        }
-        paths: list[Path] = []
-        seen: set[Path] = set()
-        for output in result.outputs:
-            extension = extensions.get(output.format, ".txt")
-            path = target / f"{output.name}{extension}"
-            if path in seen:
-                raise ValueError(f"Duplicate generated output path: {path}")
-            seen.add(path)
-            write_text(path, output.content)
-            paths.append(path)
-        return tuple(paths)
+        return save_generated_outputs(output_root, category, result.outputs)
 
     def _diagram_renderer(self, renderer: str | None) -> str:
         normalized = (renderer or self.config.renderer).lower()
