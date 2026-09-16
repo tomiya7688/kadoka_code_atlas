@@ -1,41 +1,46 @@
-"""Deterministic, language-independent comment candidate generation."""
+"""Comment suggestions derived from language-neutral Common IR."""
 
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass
 
 from Src.analyzers.ir import CodeEntity, EntityKind, ModuleIR
-from Src.analyzers.ir_queries import qualified_name
+from Src.models import CommentCandidate, CommentTarget
 
 
-@dataclass(frozen=True, slots=True)
-class CommentCandidate:
-    """A single line comment to insert before a source entity."""
-
-    line: int
-    indent: int
-    text: str
-    entity: str
+_TARGET_BY_ENTITY_KIND = {
+    EntityKind.CLASS: CommentTarget.CLASS,
+    EntityKind.FUNCTION: CommentTarget.FUNCTION,
+    EntityKind.METHOD: CommentTarget.METHOD,
+}
 
 
 class RuleBasedCommentGenerator:
-    """Generate concise role comments without requiring an LLM."""
+    """Transform Common IR entities into the canonical comment-candidate model.
+
+    This helper does not parse source text and does not rewrite source files. The
+    source-oriented :class:`CommentGenerator` remains the production
+    orchestration entry point.
+    """
 
     def generate(self, module: ModuleIR) -> list[CommentCandidate]:
         candidates: list[CommentCandidate] = []
         for entity in module.entities:
             if entity.docstring:
                 continue
+            target = _TARGET_BY_ENTITY_KIND.get(entity.kind)
+            if target is None:
+                continue
             text = self._describe(entity)
             if not text:
                 continue
             candidates.append(
                 CommentCandidate(
+                    target=target,
+                    name=entity.name,
                     line=entity.line,
-                    indent=entity.indent,
+                    indent=" " * entity.indent,
                     text=text,
-                    entity=qualified_name(entity),
                 )
             )
         return candidates
