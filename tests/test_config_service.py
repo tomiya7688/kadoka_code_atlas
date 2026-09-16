@@ -16,6 +16,7 @@ def test_missing_config_enables_all_default_capabilities() -> None:
     assert "communication_diagram" in resolved.generators
     assert "state_diagram" in resolved.generators
     assert "package_diagram" in resolved.generators
+    assert "component_diagram" in resolved.generators
     assert "ci_quality" in resolved.evaluators
     assert "design_quality" in resolved.evaluators
 
