@@ -2,11 +2,8 @@
 
 from __future__ import annotations
 
-import csv
-import io
 import re
 from dataclasses import dataclass
-from collections.abc import Sequence
 
 from Src.analyzers.class_relations import ClassRelationGraph, build_class_relation_graph
 from Src.analyzers.ir import CodeEntity, ModuleIR
@@ -15,18 +12,7 @@ from Src.analyzers.partition import partition_graph
 from Src.generators.output_names import stable_output_name
 from Src.generators.series_layout import regular_placement, shared_placement
 from Src.models.output_layout import OutputPlacement
-
-
-@dataclass(frozen=True, slots=True)
-class ResponsibilityRow:
-    class_name: str
-    responsibility: str
-
-
-@dataclass(frozen=True, slots=True)
-class ResponsibilityTable:
-    name: str
-    rows: tuple[ResponsibilityRow, ...]
+from Src.models.responsibility import ResponsibilityRow, ResponsibilityTable
 
 
 @dataclass(frozen=True, slots=True)
@@ -66,20 +52,6 @@ def rows(module: ModuleIR) -> list[ResponsibilityRow]:
         ]
         result.append(ResponsibilityRow(class_name, _describe(class_entity, methods)))
     return result
-
-
-def to_markdown(rows_: Sequence[ResponsibilityRow]) -> str:
-    lines = ["| Class | Responsibility |", "| --- | --- |"]
-    lines.extend(f"| {row.class_name} | {row.responsibility} |" for row in rows_)
-    return "\n".join(lines) + "\n"
-
-
-def to_csv(rows_: Sequence[ResponsibilityRow]) -> str:
-    output = io.StringIO()
-    writer = csv.writer(output, lineterminator="\n")
-    writer.writerow(["Class", "Responsibility"])
-    writer.writerows((row.class_name, row.responsibility) for row in rows_)
-    return output.getvalue()
 
 
 def build_responsibility_table_bundle(

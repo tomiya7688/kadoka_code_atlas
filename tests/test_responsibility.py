@@ -1,10 +1,9 @@
-from Src.generators.responsibility import (
-    build_responsibility_table_bundle,
-    rows,
-    to_csv,
-    to_markdown,
-)
+from Src.generators.responsibility import build_responsibility_table_bundle, rows
 from Src.languages.python import PythonLanguageAdapter
+from Src.renderers.responsibility_table import (
+    render_responsibility_csv,
+    render_responsibility_markdown,
+)
 
 
 def test_responsibility_outputs_markdown_and_csv():
@@ -16,8 +15,8 @@ def test_responsibility_outputs_markdown_and_csv():
     )
     result = rows(module)
     assert result[0].responsibility == "Coordinates board state processing."
-    assert "| BoardState | Coordinates board state processing. |" in to_markdown(result)
-    assert to_csv(result).splitlines()[0] == "Class,Responsibility"
+    assert "| BoardState | Coordinates board state processing. |" in render_responsibility_markdown(result)
+    assert render_responsibility_csv(result).splitlines()[0] == "Class,Responsibility"
 
 
 def test_responsibility_tables_partition_related_classes_and_isolated_classes():
