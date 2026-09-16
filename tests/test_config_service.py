@@ -14,7 +14,9 @@ def test_missing_config_enables_all_default_capabilities() -> None:
     assert "object_diagram" in resolved.generators
     assert "sequence_diagram" in resolved.generators
     assert "communication_diagram" in resolved.generators
+    assert "state_diagram" in resolved.generators
     assert "ci_quality" in resolved.evaluators
+    assert "design_quality" in resolved.evaluators
 
 
 def test_config_excludes_capabilities_and_cli_overrides() -> None:
