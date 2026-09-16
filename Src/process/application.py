@@ -181,8 +181,9 @@ class ApplicationService:
                 table.name,
                 to_csv(table.rows) if normalized == "csv" else to_markdown(table.rows),
                 normalized,
+                placement.relative_dir,
             )
-            for table in bundle.tables
+            for table, placement in zip(bundle.tables, bundle.placements, strict=True)
         )
         return DiagramSetResult(outputs, bundle.statistics)
 
@@ -222,8 +223,13 @@ class ApplicationService:
         module = self._python_module(request)
         bundle = build_object_diagram_bundle(module, fan_in_threshold=fan_in_threshold)
         outputs = tuple(
-            GeneratedOutput(diagram.name, render_object_diagram(diagram), "mermaid")
-            for diagram in bundle.diagrams
+            GeneratedOutput(
+                diagram.name,
+                render_object_diagram(diagram),
+                "mermaid",
+                placement.relative_dir,
+            )
+            for diagram, placement in zip(bundle.diagrams, bundle.placements, strict=True)
         )
         return DiagramSetResult(outputs, bundle.statistics)
 
@@ -252,8 +258,13 @@ class ApplicationService:
             fan_in_threshold=fan_in_threshold,
         )
         outputs = tuple(
-            GeneratedOutput(diagram.name, render_package_diagram(diagram), "mermaid")
-            for diagram in bundle.diagrams
+            GeneratedOutput(
+                diagram.name,
+                render_package_diagram(diagram),
+                "mermaid",
+                placement.relative_dir,
+            )
+            for diagram, placement in zip(bundle.diagrams, bundle.placements, strict=True)
         )
         return DiagramSetResult(outputs, bundle.statistics)
 
@@ -277,8 +288,13 @@ class ApplicationService:
             fan_in_threshold=fan_in_threshold,
         )
         outputs = tuple(
-            GeneratedOutput(diagram.name, render_component_diagram(diagram), "mermaid")
-            for diagram in bundle.diagrams
+            GeneratedOutput(
+                diagram.name,
+                render_component_diagram(diagram),
+                "mermaid",
+                placement.relative_dir,
+            )
+            for diagram, placement in zip(bundle.diagrams, bundle.placements, strict=True)
         )
         return DiagramSetResult(outputs, bundle.statistics)
 
@@ -358,8 +374,9 @@ class ApplicationService:
                 diagram.name,
                 render_communication_diagram(diagram),
                 "mermaid",
+                placement.relative_dir,
             )
-            for diagram in bundle.diagrams
+            for diagram, placement in zip(bundle.diagrams, bundle.placements, strict=True)
         )
         return DiagramSetResult(outputs, bundle.statistics)
 

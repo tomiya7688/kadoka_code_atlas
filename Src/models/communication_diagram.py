@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from Src.models.output_layout import OutputPlacement
+
 
 @dataclass(frozen=True, slots=True)
 class CommunicationMessage:
@@ -23,4 +25,5 @@ class CommunicationDiagram:
 @dataclass(frozen=True, slots=True)
 class CommunicationDiagramBundle:
     diagrams: tuple[CommunicationDiagram, ...]
-    statistics: dict[str, int | tuple[int, ...]]
+    statistics: dict[str, int | float | tuple[int, ...]]
+    placements: tuple[OutputPlacement, ...] = ()

@@ -7,6 +7,8 @@ from dataclasses import dataclass
 from Src.analyzers.component_dependencies import ComponentDependencyGraph
 from Src.analyzers.partition import partition_graph
 from Src.generators.output_names import stable_output_name
+from Src.generators.series_layout import regular_placement, shared_placement
+from Src.models.output_layout import OutputPlacement
 
 
 @dataclass(frozen=True, slots=True)
@@ -32,7 +34,8 @@ class ComponentDiagram:
 @dataclass(frozen=True, slots=True)
 class ComponentDiagramBundle:
     diagrams: tuple[ComponentDiagram, ...]
-    statistics: dict[str, int | tuple[int, ...]]
+    statistics: dict[str, int | float | tuple[int, ...]]
+    placements: tuple[OutputPlacement, ...] = ()
 
 
 def build_component_diagram_bundle(
@@ -45,6 +48,7 @@ def build_component_diagram_bundle(
     partition = partition_graph(graph, fan_in_threshold=fan_in_threshold)
     cycle_nodes = {node for cycle in graph.cycles() for node in cycle}
     diagrams: list[ComponentDiagram] = []
+    placements: list[OutputPlacement] = []
 
     def make(prefix: str, logical_name: str, names: set[str]) -> ComponentDiagram:
         return ComponentDiagram(
@@ -61,17 +65,26 @@ def build_component_diagram_bundle(
             cycle_nodes=tuple(sorted(names & cycle_nodes)),
         )
 
-    for index, series in enumerate(partition.series, start=1):
+    for series_index, series in enumerate(partition.series):
         names = set(series)
-        if names:
-            diagrams.append(make(f"series_{index}", series[0], names))
+        if not names:
+            continue
+        diagram = make(
+            f"series_{series_index + 1}",
+            partition.series_roots[series_index],
+            names,
+        )
+        diagrams.append(diagram)
+        placements.append(regular_placement(diagram.name, partition, series_index))
 
     for shared in partition.shared:
         names = {shared}
         names.update(item.caller for item in graph.edges if item.callee == shared)
         names.update(item.callee for item in graph.edges if item.caller == shared)
-        diagrams.append(make("shared", shared, names))
+        diagram = make("shared", shared, names)
+        diagrams.append(diagram)
+        placements.append(shared_placement(diagram.name, shared))
 
     statistics = dict(partition.statistics)
     statistics["external_node_count"] = len(graph.external_nodes)
-    return ComponentDiagramBundle(tuple(diagrams), statistics)
+    return ComponentDiagramBundle(tuple(diagrams), statistics, tuple(placements))
