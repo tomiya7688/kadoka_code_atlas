@@ -3,10 +3,10 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-import re
 
 from Src.analyzers.component_dependencies import ComponentDependencyGraph
 from Src.analyzers.partition import partition_graph
+from Src.generators.output_names import stable_output_name
 
 
 @dataclass(frozen=True, slots=True)
@@ -35,11 +35,6 @@ class ComponentDiagramBundle:
     statistics: dict[str, int | tuple[int, ...]]
 
 
-def _safe_name(value: str) -> str:
-    normalized = re.sub(r"[^A-Za-z0-9_.-]+", "_", value).strip("_.-")
-    return normalized or "component"
-
-
 def build_component_diagram_bundle(
     graph: ComponentDependencyGraph,
     *,
@@ -51,9 +46,9 @@ def build_component_diagram_bundle(
     cycle_nodes = {node for cycle in graph.cycles() for node in cycle}
     diagrams: list[ComponentDiagram] = []
 
-    def make(name: str, names: set[str]) -> ComponentDiagram:
+    def make(prefix: str, logical_name: str, names: set[str]) -> ComponentDiagram:
         return ComponentDiagram(
-            name=_safe_name(name),
+            name=stable_output_name(prefix, logical_name, fallback="component"),
             nodes=tuple(
                 ComponentDiagramNode(node, node in graph.external_nodes)
                 for node in sorted(names)
@@ -66,16 +61,16 @@ def build_component_diagram_bundle(
             cycle_nodes=tuple(sorted(names & cycle_nodes)),
         )
 
-    for series in partition.series:
+    for index, series in enumerate(partition.series, start=1):
         names = set(series)
         if names:
-            diagrams.append(make(f"series_{series[0]}", names))
+            diagrams.append(make(f"series_{index}", series[0], names))
 
     for shared in partition.shared:
         names = {shared}
         names.update(item.caller for item in graph.edges if item.callee == shared)
         names.update(item.callee for item in graph.edges if item.caller == shared)
-        diagrams.append(make(f"shared_{shared}", names))
+        diagrams.append(make("shared", shared, names))
 
     statistics = dict(partition.statistics)
     statistics["external_node_count"] = len(graph.external_nodes)
