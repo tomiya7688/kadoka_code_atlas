@@ -9,6 +9,7 @@ from Src.process.application import (
     CommentRequest,
     SourceAnalysisRequest,
 )
+from Src.process.call_graph_service import CallGraphAnalysisRequest, CallGraphService
 from Src.process.config_service import load_config
 from Src.process.deployment_service import DeploymentAnalysisRequest, DeploymentService
 from Src.process.timing_service import TimingAnalysisRequest, TimingService
@@ -79,6 +80,13 @@ def main(argv: list[str] | None = None) -> int:
     use_cases.add_argument("--language", help="Adapter name; inferred from the extension.")
     use_cases.add_argument("--output-dir")
     use_cases.add_argument("--max-depth", type=int, default=5)
+    call_graph = sub.add_parser("call-graph", help="Generate partitioned call graphs.")
+    call_graph.add_argument("source")
+    call_graph.add_argument("--language", help="Adapter name; inferred from the extension.")
+    call_graph.add_argument("--output-dir")
+    call_graph.add_argument("--fan-in-threshold", type=int, default=3)
+    call_graph.add_argument("--root")
+    call_graph.add_argument("--max-depth", type=int)
     class_diagram = sub.add_parser("class-diagram", help="Generate class diagrams.")
     class_diagram.add_argument("source")
     class_diagram.add_argument("--language", help="Adapter name; inferred from the extension.")
@@ -105,6 +113,7 @@ def main(argv: list[str] | None = None) -> int:
         "deployment",
         "timing",
         "use-cases",
+        "call-graph",
         "class-diagram",
         "sequence-diagram",
     }
@@ -153,6 +162,26 @@ def main(argv: list[str] | None = None) -> int:
         )
         if args.output_dir:
             paths = use_case_service.save(Path(args.output_dir), result)
+            for output_path in paths:
+                print(output_path)
+        else:
+            _print_outputs(result)
+        return 0
+
+    if args.command == "call-graph":
+        path = Path(args.source)
+        language = args.language or service.detect_language(path)
+        if language == "unknown":
+            parser.error(f"unsupported source file type: {path.suffix or path.name}")
+        call_graph_service = CallGraphService()
+        result = call_graph_service.generate(
+            CallGraphAnalysisRequest(path, language),
+            fan_in_threshold=args.fan_in_threshold,
+            root=args.root,
+            max_depth=args.max_depth,
+        )
+        if args.output_dir:
+            paths = call_graph_service.save(Path(args.output_dir), result)
             for output_path in paths:
                 print(output_path)
         else:
