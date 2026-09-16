@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from Src.models.output_layout import OutputPlacement
+
 
 @dataclass(frozen=True, slots=True)
 class ClassMember:
@@ -36,4 +38,5 @@ class ClassDiagram:
 @dataclass(frozen=True, slots=True)
 class ClassDiagramBundle:
     diagrams: tuple[ClassDiagram, ...]
-    statistics: dict[str, int | tuple[int, ...]]
+    statistics: dict[str, int | float | tuple[int, ...]]
+    placements: tuple[OutputPlacement, ...] = ()
