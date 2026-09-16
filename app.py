@@ -9,11 +9,22 @@ from Src.process.deployment_service import DeploymentAnalysisRequest, Deployment
 from Src.data.files import write_text
 PROJECT_NAME = "Kadoka Code Atlas"
 PROJECT_VERSION = "0.1.0"
-DEFAULT_CONFIG_PATH = Path("kadoka-code-atlas.json")
+CONFIG_FILE_NAME = "kadoka-code-atlas.json"
+
+
+def _runtime_root() -> Path:
+    """Return the source/package root or the PyInstaller onedir root."""
+    if getattr(sys, "frozen", False):
+        return Path(sys.executable).resolve().parent
+    return Path(__file__).resolve().parent
+
+
+def _default_config_path() -> Path:
+    return _runtime_root() / "config" / CONFIG_FILE_NAME
 
 
 def _application_service() -> ApplicationService:
-    return ApplicationService(load_config(DEFAULT_CONFIG_PATH))
+    return ApplicationService(load_config(_default_config_path()))
 
 
 def _launch_gui() -> int:
