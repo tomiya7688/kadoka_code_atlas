@@ -77,6 +77,26 @@ class StateMachineIR:
 
 
 @dataclass(slots=True)
+class TimingEventIR:
+    """One passive temporal relation observed in source order."""
+
+    order: int
+    kind: str
+    line: int
+    target: str | None = None
+    detail: str | None = None
+
+
+@dataclass(slots=True)
+class TimingFlowIR:
+    """Passive logical timing facts for one function or method."""
+
+    owner: str
+    is_async: bool
+    events: tuple[TimingEventIR, ...] = ()
+
+
+@dataclass(slots=True)
 class ModuleIR:
     """Normalized representation of one source module/file."""
 
@@ -84,4 +104,5 @@ class ModuleIR:
     entities: list[CodeEntity] = field(default_factory=list)
     objects: list[ObjectInstanceIR] = field(default_factory=list)
     state_machines: list[StateMachineIR] = field(default_factory=list)
+    timing_flows: list[TimingFlowIR] = field(default_factory=list)
     imports: tuple[str, ...] = ()
