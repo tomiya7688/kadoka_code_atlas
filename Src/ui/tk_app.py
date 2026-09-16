@@ -16,6 +16,7 @@ from Src.process.application import (
 )
 from Src.process.deployment_service import DeploymentAnalysisRequest, DeploymentService
 from Src.process.timing_service import TimingAnalysisRequest, TimingService
+from Src.process.use_case_service import UseCaseAnalysisRequest, UseCaseService
 
 PROJECT_NAME = "Kadoka Code Atlas"
 
@@ -30,6 +31,7 @@ _OPERATION_PACKAGE_DIAGRAM = "Package diagrams (Mermaid)"
 _OPERATION_COMPONENT_DIAGRAM = "Component diagrams (Mermaid)"
 _OPERATION_DEPLOYMENT_DIAGRAM = "Deployment diagrams (Mermaid)"
 _OPERATION_TIMING_CHART = "Timing charts (Mermaid)"
+_OPERATION_USE_CASE_DIAGRAM = "Use case diagrams (Mermaid)"
 _OPERATION_RESPONSIBILITY = "Class responsibility tables"
 _OPERATION_DESIGN_QUALITY = "Design quality report"
 _OPERATION_CI = "GitHub Actions CI graph"
@@ -45,6 +47,7 @@ _OPERATIONS = (
     _OPERATION_COMPONENT_DIAGRAM,
     _OPERATION_DEPLOYMENT_DIAGRAM,
     _OPERATION_TIMING_CHART,
+    _OPERATION_USE_CASE_DIAGRAM,
     _OPERATION_RESPONSIBILITY,
     _OPERATION_DESIGN_QUALITY,
     _OPERATION_CI,
@@ -59,6 +62,7 @@ class AtlasTkApp:
         self.service = service or ApplicationService()
         self.deployment_service = DeploymentService()
         self.timing_service = TimingService()
+        self.use_case_service = UseCaseService()
         self.base_path: Path | None = None
         self.files: list[Path] = []
         self.current_file: Path | None = None
@@ -226,6 +230,7 @@ class AtlasTkApp:
             _OPERATION_PACKAGE_DIAGRAM,
             _OPERATION_COMPONENT_DIAGRAM,
             _OPERATION_TIMING_CHART,
+            _OPERATION_USE_CASE_DIAGRAM,
             _OPERATION_RESPONSIBILITY,
             _OPERATION_DESIGN_QUALITY,
         }:
@@ -269,6 +274,14 @@ class AtlasTkApp:
                 )
                 self.last_diagram_set = outputs
                 self.last_diagram_category = "timing_charts"
+                content = self._output_set_text(outputs)
+                result_format = "mermaid-bundle"
+            elif operation == _OPERATION_USE_CASE_DIAGRAM:
+                outputs = self.use_case_service.generate(
+                    UseCaseAnalysisRequest(path, language)
+                )
+                self.last_diagram_set = outputs
+                self.last_diagram_category = "use_case_diagrams"
                 content = self._output_set_text(outputs)
                 result_format = "mermaid-bundle"
             elif operation == _OPERATION_COMMENTS:
