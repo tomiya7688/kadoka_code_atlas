@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from Src.analyzers.call_sequence import build_sequence_relation_graph, resolve_call_sequences
 from Src.analyzers.class_relations import build_class_relation_graph
 from Src.analyzers.ir import ModuleIR
-from Src.analyzers.partition import partition_graph
+from Src.analyzers.partition import GraphPartition, partition_graph
 from Src.models.design_quality import DesignFinding, DesignMetric, DesignQualityReport
 
 
@@ -42,18 +42,10 @@ def evaluate_design_quality(
     metrics = (
         DesignMetric("node_count", len(call_graph.nodes), "call_graph"),
         DesignMetric("edge_count", len(call_graph.edges), "call_graph"),
-        DesignMetric("cycle_count", call_partition.cycle_count, "call_graph"),
-        DesignMetric("series_count", call_partition.series_count, "call_graph"),
-        DesignMetric("max_nodes_per_series", call_partition.max_nodes_per_series, "call_graph"),
-        DesignMetric("shared_node_count", call_partition.shared_node_count, "call_graph"),
-        DesignMetric("cross_series_edge_count", call_partition.cross_series_edge_count, "call_graph"),
+        *_partition_metrics(call_partition, "call_graph"),
         DesignMetric("node_count", len(class_graph.nodes), "class_graph"),
         DesignMetric("edge_count", len(class_graph.edges), "class_graph"),
-        DesignMetric("cycle_count", class_partition.cycle_count, "class_graph"),
-        DesignMetric("series_count", class_partition.series_count, "class_graph"),
-        DesignMetric("max_nodes_per_series", class_partition.max_nodes_per_series, "class_graph"),
-        DesignMetric("shared_node_count", class_partition.shared_node_count, "class_graph"),
-        DesignMetric("cross_series_edge_count", class_partition.cross_series_edge_count, "class_graph"),
+        *_partition_metrics(class_partition, "class_graph"),
     )
 
     findings: list[DesignFinding] = []
@@ -96,6 +88,25 @@ def evaluate_design_quality(
         )
     )
     return DesignQualityReport(metrics=metrics, findings=tuple(findings))
+
+
+def _partition_metrics(
+    partition: GraphPartition,
+    scope: str,
+) -> tuple[DesignMetric, ...]:
+    """Expose diagram partition locality without coupling evaluation to renderers."""
+
+    return (
+        DesignMetric("cycle_count", partition.cycle_count, scope),
+        DesignMetric("series_count", partition.series_count, scope),
+        DesignMetric("max_nodes_per_series", partition.max_nodes_per_series, scope),
+        DesignMetric("avg_nodes_per_series", partition.avg_nodes_per_series, scope),
+        DesignMetric("max_partition_depth", partition.max_partition_depth, scope),
+        DesignMetric("shared_node_count", partition.shared_node_count, scope),
+        DesignMetric("shared_node_ratio", partition.shared_node_ratio, scope),
+        DesignMetric("cross_series_edge_count", partition.cross_series_edge_count, scope),
+        DesignMetric("cross_series_edge_ratio", partition.cross_series_edge_ratio, scope),
+    )
 
 
 def _hub_findings(

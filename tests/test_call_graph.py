@@ -112,8 +112,12 @@ def shared(): pass
     assert result.statistics == {
         "series_count": 1,
         "max_nodes_per_series": 2,
+        "avg_nodes_per_series": 2.0,
+        "max_partition_depth": 0,
         "cross_series_edge_count": 0,
+        "cross_series_edge_ratio": 0.0,
         "shared_node_count": 0,
+        "shared_node_ratio": 0.0,
         "fan_in_distribution": (0, 1),
         "fan_out_distribution": (0, 1),
         "cycle_count": 0,
