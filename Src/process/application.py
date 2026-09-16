@@ -22,7 +22,7 @@ from Src.evaluators.design_quality import (
     DesignQualityThresholds,
     evaluate_design_quality as evaluate_design_quality_model,
 )
-from Src.generators import CommentGenerator, generate_call_graph_mermaid, rows, to_csv, to_markdown
+from Src.generators import CommentGenerator, build_call_graph, rows
 from Src.generators.class_diagram import ClassDiagramOptions, build_class_diagram_bundle
 from Src.generators.communication_diagram import build_communication_diagram_bundle
 from Src.generators.component_diagram import build_component_diagram_bundle
@@ -34,7 +34,12 @@ from Src.generators.state_diagram import build_state_diagram_bundle
 from Src.languages.python import PythonLanguageAdapter
 from Src.languages.python_project import PythonProjectLanguageAdapter
 from Src.models.config import AtlasConfig
-from Src.renderers import render_ci_workflow
+from Src.renderers import (
+    render_call_graph,
+    render_ci_workflow,
+    render_responsibility_csv,
+    render_responsibility_markdown,
+)
 from Src.renderers.design_quality_markdown import render_design_quality_markdown
 from Src.renderers.mermaid_class_diagram import render_class_diagram
 from Src.renderers.mermaid_communication_diagram import render_communication_diagram
@@ -141,10 +146,8 @@ class ApplicationService:
         max_depth: int | None = None,
     ) -> TextResult:
         module = self._python_module(request)
-        return TextResult(
-            generate_call_graph_mermaid(module, root=root, max_depth=max_depth),
-            format="mermaid",
-        )
+        graph = build_call_graph(module, root=root, max_depth=max_depth)
+        return TextResult(render_call_graph(graph), format="mermaid")
 
     def generate_responsibility_table(
         self,
@@ -156,10 +159,10 @@ class ApplicationService:
         table_rows = rows(module)
         normalized = output_format.lower()
         if normalized == "csv":
-            return TextResult(to_csv(table_rows), format="csv")
+            return TextResult(render_responsibility_csv(table_rows), format="csv")
         if normalized != "markdown":
             raise ValueError(f"Unsupported responsibility output format: {output_format}")
-        return TextResult(to_markdown(table_rows), format="markdown")
+        return TextResult(render_responsibility_markdown(table_rows), format="markdown")
 
     def generate_responsibility_tables(
         self,
@@ -176,10 +179,15 @@ class ApplicationService:
             module,
             fan_in_threshold=fan_in_threshold,
         )
+        render = (
+            render_responsibility_csv
+            if normalized == "csv"
+            else render_responsibility_markdown
+        )
         outputs = tuple(
             GeneratedOutput(
                 table.name,
-                to_csv(table.rows) if normalized == "csv" else to_markdown(table.rows),
+                render(table.rows),
                 normalized,
                 placement.relative_dir,
             )
