@@ -12,12 +12,14 @@ from Src.evaluators import evaluate_ci
 from Src.generators import CommentGenerator, generate_call_graph_mermaid, rows, to_csv, to_markdown
 from Src.generators.class_diagram import ClassDiagramOptions, build_class_diagram_bundle
 from Src.generators.communication_diagram import build_communication_diagram_bundle
+from Src.generators.object_diagram import build_object_diagram_bundle
 from Src.generators.sequence_diagram import SequenceDiagramOptions, build_sequence_diagram_bundle
 from Src.languages.python import PythonLanguageAdapter
 from Src.models.config import AtlasConfig
 from Src.renderers import render_ci_workflow
 from Src.renderers.mermaid_class_diagram import render_class_diagram
 from Src.renderers.mermaid_communication_diagram import render_communication_diagram
+from Src.renderers.mermaid_object_diagram import render_object_diagram
 from Src.renderers.mermaid_sequence_diagram import render_sequence_diagram
 
 
@@ -124,6 +126,20 @@ class ApplicationService:
         )
         outputs = tuple(
             GeneratedOutput(diagram.name, render_class_diagram(diagram), "mermaid")
+            for diagram in bundle.diagrams
+        )
+        return DiagramSetResult(outputs, bundle.statistics)
+
+    def generate_object_diagrams(
+        self,
+        request: SourceAnalysisRequest,
+        *,
+        fan_in_threshold: int = 3,
+    ) -> DiagramSetResult:
+        module = self._python_module(request)
+        bundle = build_object_diagram_bundle(module, fan_in_threshold=fan_in_threshold)
+        outputs = tuple(
+            GeneratedOutput(diagram.name, render_object_diagram(diagram), "mermaid")
             for diagram in bundle.diagrams
         )
         return DiagramSetResult(outputs, bundle.statistics)
