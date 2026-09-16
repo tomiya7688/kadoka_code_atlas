@@ -33,6 +33,7 @@ def default_capabilities() -> tuple[Capability, ...]:
         Capability("comment", "generator", ()),
         Capability("call_graph", "generator"),
         Capability("class_diagram", "generator"),
+        Capability("object_diagram", "generator"),
         Capability("sequence_diagram", "generator"),
         Capability("communication_diagram", "generator"),
         Capability("activity_diagram", "generator"),
