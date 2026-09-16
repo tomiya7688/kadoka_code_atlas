@@ -1,5 +1,15 @@
-"""Language-specific parsing adapters."""
+"""Language-specific parsing adapters and backend contracts."""
 
+from .backend import (
+    PARSER_BACKEND_CONTRACT_VERSION,
+    ParserBackend,
+    ParserBackendDescriptor,
+    ParserBackendError,
+    ParserBackendFailure,
+    ParserBackendFailureKind,
+    ParserBackendKind,
+    normalize_backend_exception,
+)
 from .base import LanguageAdapter
 from .csharp import CSharpAdapter
 from .cpp import CppAdapter
@@ -16,6 +26,14 @@ __all__ = [
     "GoAdapter",
     "JavaAdapter",
     "LanguageAdapter",
+    "PARSER_BACKEND_CONTRACT_VERSION",
+    "ParserBackend",
+    "ParserBackendDescriptor",
+    "ParserBackendError",
+    "ParserBackendFailure",
+    "ParserBackendFailureKind",
+    "ParserBackendKind",
     "PythonAdapter",
     "PythonLanguageAdapter",
+    "normalize_backend_exception",
 ]
