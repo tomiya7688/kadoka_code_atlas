@@ -25,6 +25,7 @@ _OPERATION_SEQUENCE_DIAGRAM = "Sequence diagrams (Mermaid)"
 _OPERATION_COMMUNICATION_DIAGRAM = "Communication diagrams (Mermaid)"
 _OPERATION_STATE_DIAGRAM = "State diagrams (Mermaid)"
 _OPERATION_PACKAGE_DIAGRAM = "Package diagrams (Mermaid)"
+_OPERATION_COMPONENT_DIAGRAM = "Component diagrams (Mermaid)"
 _OPERATION_RESPONSIBILITY = "Class responsibility tables"
 _OPERATION_DESIGN_QUALITY = "Design quality report"
 _OPERATION_CI = "GitHub Actions CI graph"
@@ -37,6 +38,7 @@ _OPERATIONS = (
     _OPERATION_COMMUNICATION_DIAGRAM,
     _OPERATION_STATE_DIAGRAM,
     _OPERATION_PACKAGE_DIAGRAM,
+    _OPERATION_COMPONENT_DIAGRAM,
     _OPERATION_RESPONSIBILITY,
     _OPERATION_DESIGN_QUALITY,
     _OPERATION_CI,
@@ -196,6 +198,7 @@ class AtlasTkApp:
             _OPERATION_COMMUNICATION_DIAGRAM,
             _OPERATION_STATE_DIAGRAM,
             _OPERATION_PACKAGE_DIAGRAM,
+            _OPERATION_COMPONENT_DIAGRAM,
             _OPERATION_RESPONSIBILITY,
             _OPERATION_DESIGN_QUALITY,
         }:
@@ -272,6 +275,16 @@ class AtlasTkApp:
                 )
                 self.last_diagram_set = outputs
                 self.last_diagram_category = "package_diagrams"
+                content = self._output_set_text(outputs)
+                result_format = "mermaid-bundle"
+            elif operation == _OPERATION_COMPONENT_DIAGRAM:
+                if self.base_path is None or not self.base_path.is_dir():
+                    raise ValueError("Component diagrams require opening a project folder.")
+                outputs = self.service.generate_component_diagrams(
+                    ProjectAnalysisRequest(self.base_path, "python")
+                )
+                self.last_diagram_set = outputs
+                self.last_diagram_category = "component_diagrams"
                 content = self._output_set_text(outputs)
                 result_format = "mermaid-bundle"
             elif operation == _OPERATION_RESPONSIBILITY:
