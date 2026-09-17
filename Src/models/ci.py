@@ -14,6 +14,13 @@ class CIStep:
 
 
 @dataclass(frozen=True, slots=True)
+class CIPathHint:
+    job: str
+    step: str
+    path: str
+
+
+@dataclass(frozen=True, slots=True)
 class CIJob:
     name: str
     needs: tuple[str, ...] = ()
