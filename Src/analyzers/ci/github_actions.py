@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
-import re
 from pathlib import PurePosixPath
+import re
 
 import yaml
 
@@ -84,23 +84,41 @@ def _normalize_needs(value: object) -> tuple[str, ...]:
     return ()
 
 
-def _normalize_path_hint(value: str) -> str | None:
+def _clean_path_text(value: str) -> str | None:
     token = value.strip().strip("\"'").strip("(),;")
-    if not token or token.startswith(("-", "$", "${{")):
-        return None
-    if "://" in token:
+    if not token or token.startswith(("-", "$", "${{")) or "://" in token:
         return None
     token = token.replace("\\", "/")
     if token.startswith("./"):
         token = token[2:]
-    token = token.rstrip("/") or "."
+    return token.rstrip("/") or "."
+
+
+def _normalize_explicit_path(value: str) -> str | None:
+    """Accept an explicitly configured working/local-action path conservatively."""
+    return _clean_path_text(value)
+
+
+def _normalize_path_hint(value: str) -> str | None:
+    raw = value.strip().strip("\"'").strip("(),;")
+    explicit_relative = raw.startswith(("./", "../"))
+    token = _clean_path_text(value)
+    if token is None:
+        return None
     lowered = token.casefold()
     suffix = PurePosixPath(token).suffix.casefold()
     is_common_directory = lowered in _COMMON_PROJECT_PATHS
     is_nested_path = "/" in token and ":" not in token
     is_known_file = suffix in _PATH_SUFFIXES
     is_glob = any(marker in token for marker in ("*", "?", "["))
-    if token == "." or is_common_directory or is_nested_path or is_known_file or is_glob:
+    if (
+        token == "."
+        or explicit_relative
+        or is_common_directory
+        or is_nested_path
+        or is_known_file
+        or is_glob
+    ):
         return token
     return None
 
@@ -134,11 +152,11 @@ def _step_path_hints(
     hints: list[str] = []
     working_directory = _as_string(raw_step.get("working-directory")) or default_working_directory
     if working_directory:
-        normalized = _normalize_path_hint(working_directory)
+        normalized = _normalize_explicit_path(working_directory)
         if normalized is not None:
             hints.append(normalized)
     if action and action.startswith("./"):
-        normalized = _normalize_path_hint(action)
+        normalized = _normalize_explicit_path(action)
         if normalized is not None and normalized not in hints:
             hints.append(normalized)
     for hint in _command_path_hints(command):
