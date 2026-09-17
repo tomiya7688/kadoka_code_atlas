@@ -10,6 +10,14 @@ class CIStep:
     name: str
     command: str | None = None
     action: str | None = None
+    path_hints: tuple[str, ...] = ()
+
+
+@dataclass(frozen=True, slots=True)
+class CIPathHint:
+    job: str
+    step: str
+    path: str
 
 
 @dataclass(frozen=True, slots=True)
