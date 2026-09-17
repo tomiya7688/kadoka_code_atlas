@@ -6,6 +6,7 @@ from dataclasses import dataclass
 
 from Src.analyzers.call_sequence import build_sequence_relation_graph, resolve_call_sequences
 from Src.analyzers.class_relations import build_class_relation_graph
+from Src.analyzers.graph_metrics import cyclic_strongly_connected_components
 from Src.analyzers.ir import ModuleIR
 from Src.analyzers.partition import GraphPartition, partition_graph
 from Src.models.design_quality import DesignFinding, DesignMetric, DesignQualityReport
@@ -16,6 +17,7 @@ class DesignQualityThresholds:
     high_fan_in: int = 3
     high_fan_out: int = 5
     large_series: int = 8
+    high_cross_series_ratio: float = 0.25
 
 
 def evaluate_design_quality(
@@ -27,7 +29,9 @@ def evaluate_design_quality(
 
     thresholds = thresholds or DesignQualityThresholds()
     if min(thresholds.high_fan_in, thresholds.high_fan_out, thresholds.large_series) < 1:
-        raise ValueError("design quality thresholds must be >= 1")
+        raise ValueError("design quality integer thresholds must be >= 1")
+    if not 0.0 <= thresholds.high_cross_series_ratio <= 1.0:
+        raise ValueError("high_cross_series_ratio must be between 0 and 1")
 
     call_graph = build_sequence_relation_graph(module, resolve_call_sequences(module))
     class_graph = build_class_relation_graph(module)
@@ -38,13 +42,17 @@ def evaluate_design_quality(
     call_fan_out = call_graph.fan_out()
     class_fan_in = class_graph.fan_in()
     class_fan_out = class_graph.fan_out()
+    call_sccs = cyclic_strongly_connected_components(call_graph)
+    class_sccs = cyclic_strongly_connected_components(class_graph)
 
     metrics = (
         DesignMetric("node_count", len(call_graph.nodes), "call_graph"),
         DesignMetric("edge_count", len(call_graph.edges), "call_graph"),
+        *_scc_metrics(call_sccs, "call_graph"),
         *_partition_metrics(call_partition, "call_graph"),
         DesignMetric("node_count", len(class_graph.nodes), "class_graph"),
         DesignMetric("edge_count", len(class_graph.edges), "class_graph"),
+        *_scc_metrics(class_sccs, "class_graph"),
         *_partition_metrics(class_partition, "class_graph"),
     )
 
@@ -69,25 +77,39 @@ def evaluate_design_quality(
     )
     findings.extend(_cycle_findings(call_graph.cycles(), "call-cycle", "call graph"))
     findings.extend(_cycle_findings(class_graph.cycles(), "class-cycle", "class graph"))
+    findings.extend(_scc_findings(call_sccs, "call graph"))
+    findings.extend(_scc_findings(class_sccs, "class graph"))
     findings.extend(
         _partition_findings(
-            call_partition.max_nodes_per_series,
-            call_partition.shared_node_count,
-            call_partition.series_count,
+            call_partition,
             scope="call graph",
             large_series=thresholds.large_series,
+            high_cross_series_ratio=thresholds.high_cross_series_ratio,
         )
     )
     findings.extend(
         _partition_findings(
-            class_partition.max_nodes_per_series,
-            class_partition.shared_node_count,
-            class_partition.series_count,
+            class_partition,
             scope="class graph",
             large_series=thresholds.large_series,
+            high_cross_series_ratio=thresholds.high_cross_series_ratio,
         )
     )
     return DesignQualityReport(metrics=metrics, findings=tuple(findings))
+
+
+def _scc_metrics(
+    components: tuple[tuple[str, ...], ...],
+    scope: str,
+) -> tuple[DesignMetric, ...]:
+    return (
+        DesignMetric("strongly_connected_component_count", len(components), scope),
+        DesignMetric(
+            "largest_scc_size",
+            max((len(component) for component in components), default=0),
+            scope,
+        ),
+    )
 
 
 def _partition_metrics(
@@ -143,8 +165,11 @@ def _hub_findings(
                 severity="warning",
                 subject=name,
                 evidence=f"{scope} fan-out = {count}",
-                interpretation="This node coordinates or depends on many distinct nodes.",
-                note="Large orchestration points may be intentional, but can also indicate concentrated responsibility.",
+                interpretation=(
+                    "This node coordinates or depends on many distinct nodes and is a "
+                    "responsibility-concentration candidate."
+                ),
+                note="Large orchestration points may be intentional, but concentrated responsibility deserves review.",
             )
         )
     return findings
@@ -168,35 +193,83 @@ def _cycle_findings(
     ]
 
 
+def _scc_findings(
+    components: tuple[tuple[str, ...], ...],
+    scope: str,
+) -> list[DesignFinding]:
+    return [
+        DesignFinding(
+            code="strongly-connected-component",
+            severity="warning",
+            subject=", ".join(component),
+            evidence=f"mutually reachable nodes = {len(component)}",
+            interpretation=(
+                f"The {scope} contains a strongly connected dependency region that cannot "
+                "be ordered as a simple acyclic layer sequence."
+            ),
+            note=(
+                "Intentional recursion can form a small SCC; larger SCCs usually deserve "
+                "architectural review because changes can propagate in both directions."
+            ),
+        )
+        for component in components
+    ]
+
+
 def _partition_findings(
-    max_nodes: int,
-    shared_nodes: int,
-    series_count: int,
+    partition: GraphPartition,
     *,
     scope: str,
     large_series: int,
+    high_cross_series_ratio: float,
 ) -> list[DesignFinding]:
     findings: list[DesignFinding] = []
-    if max_nodes >= large_series:
+    if partition.max_nodes_per_series >= large_series:
         findings.append(
             DesignFinding(
                 code="large-series",
                 severity="warning",
                 subject=scope,
-                evidence=f"largest partition contains {max_nodes} nodes",
-                interpretation="A large connected series remains after shared-node separation.",
+                evidence=f"largest partition contains {partition.max_nodes_per_series} nodes",
+                interpretation="A large connected series remains after recursive partitioning and shared-node separation.",
                 note="Large cohesive features can be valid; compare with intended architectural boundaries.",
             )
         )
-    if shared_nodes and series_count:
+    if partition.shared_node_count and partition.series_count:
         findings.append(
             DesignFinding(
                 code="shared-dependency-hubs",
                 severity="info",
                 subject=scope,
-                evidence=f"shared nodes = {shared_nodes}; regular series = {series_count}",
+                evidence=(
+                    f"shared nodes = {partition.shared_node_count}; regular series = {partition.series_count}; "
+                    f"shared ratio = {partition.shared_node_ratio:.1%}"
+                ),
                 interpretation="Several relationships converge on shared high fan-in nodes.",
                 note="Inspect whether these hubs are intentional infrastructure or accidental coupling.",
+            )
+        )
+    if (
+        partition.cross_series_edge_count
+        and partition.cross_series_edge_ratio >= high_cross_series_ratio
+    ):
+        findings.append(
+            DesignFinding(
+                code="cross-series-coupling",
+                severity="warning",
+                subject=scope,
+                evidence=(
+                    f"cross-series edges = {partition.cross_series_edge_count}; "
+                    f"ratio = {partition.cross_series_edge_ratio:.1%}"
+                ),
+                interpretation=(
+                    "A substantial fraction of dependencies cross diagram-series boundaries, "
+                    "which is a high-coupling candidate and weakens locality."
+                ),
+                note=(
+                    "Shared orchestration can legitimately connect multiple series; compare the "
+                    "cross-boundary dependencies with the intended module/component boundaries."
+                ),
             )
         )
     return findings
