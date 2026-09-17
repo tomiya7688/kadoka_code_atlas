@@ -1,6 +1,14 @@
 """CI workflow analyzers and language-neutral models."""
 
 from .github_actions import parse_github_actions
-from Src.models.ci import CIJob, CIStep, CIWorkflow
+from .source_links import collect_ci_path_hints
+from Src.models.ci import CIJob, CIPathHint, CIStep, CIWorkflow
 
-__all__ = ["CIJob", "CIStep", "CIWorkflow", "parse_github_actions"]
+__all__ = [
+    "CIJob",
+    "CIPathHint",
+    "CIStep",
+    "CIWorkflow",
+    "collect_ci_path_hints",
+    "parse_github_actions",
+]
