@@ -10,6 +10,7 @@ class CIStep:
     name: str
     command: str | None = None
     action: str | None = None
+    path_hints: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True, slots=True)
