@@ -1,0 +1,60 @@
+name: Advanced CI
+on:
+  pull_request:
+
+env:
+  BASE_URL: https://example.invalid
+  GLOBAL_TOKEN: ${{ secrets.GLOBAL_TOKEN }}
+  HARDCODED_SECRET: do-not-store-this-value
+
+jobs:
+  test:
+    name: Test matrix
+    if: ${{ github.event_name == 'pull_request' }}
+    timeout-minutes: 20
+    continue-on-error: false
+    env:
+      SERVICE_URL: ${{ env.BASE_URL }}
+      JOB_TOKEN: ${{ secrets.JOB_TOKEN }}
+    strategy:
+      fail-fast: false
+      max-parallel: 2
+      matrix:
+        python: ["3.11", "3.12"]
+        os: [ubuntu-latest, windows-latest]
+        include:
+          - python: "3.13"
+            os: ubuntu-latest
+            experimental: true
+        exclude:
+          - python: "3.11"
+            os: windows-latest
+    steps:
+      - name: Cache pip
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/pip
+            .venv
+          key: pip-${{ runner.os }}-${{ matrix.python }}
+      - name: Run tests
+        if: ${{ env.RUN_TESTS != '0' }}
+        timeout-minutes: 8
+        continue-on-error: ${{ matrix.experimental || false }}
+        env:
+          STEP_TOKEN: ${{ secrets.STEP_TOKEN }}
+          LOCAL_FLAG: enabled
+        retry: 4
+        run: python -m pytest tests
+      - name: Upload reports
+        uses: actions/upload-artifact@v4
+        with:
+          name: reports-${{ matrix.python }}
+          path: |
+            reports/
+            coverage.xml
+      - name: Download seed
+        uses: actions/download-artifact@v4
+        with:
+          name: seed-data
+          path: .cache/seed

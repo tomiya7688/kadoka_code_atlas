@@ -10,9 +10,26 @@
           "name": "Tests",
           "command": "python -m pytest tests/unit/test_service.py",
           "action": null,
-          "path_hints": ["tests/unit/test_service.py"]
+          "path_hints": ["tests/unit/test_service.py"],
+          "condition": null,
+          "continue_on_error": null,
+          "timeout_minutes": null,
+          "env_names": [],
+          "env_refs": [],
+          "secret_refs": [],
+          "resources": [],
+          "retry": null
         }
-      ]
+      ],
+      "display_name": null,
+      "condition": null,
+      "continue_on_error": null,
+      "timeout_minutes": null,
+      "env_names": [],
+      "env_refs": [],
+      "secret_refs": [],
+      "strategy": null,
+      "retry": null
     },
     {
       "name": "build",
@@ -22,15 +39,43 @@
           "name": "Checkout",
           "command": null,
           "action": "actions/checkout@v4",
-          "path_hints": []
+          "path_hints": [],
+          "condition": null,
+          "continue_on_error": null,
+          "timeout_minutes": null,
+          "env_names": [],
+          "env_refs": [],
+          "secret_refs": [],
+          "resources": [],
+          "retry": null
         },
         {
           "name": "Build",
           "command": "python -m build",
           "action": null,
-          "path_hints": []
+          "path_hints": [],
+          "condition": null,
+          "continue_on_error": null,
+          "timeout_minutes": null,
+          "env_names": [],
+          "env_refs": [],
+          "secret_refs": [],
+          "resources": [],
+          "retry": null
         }
-      ]
+      ],
+      "display_name": null,
+      "condition": null,
+      "continue_on_error": null,
+      "timeout_minutes": null,
+      "env_names": [],
+      "env_refs": [],
+      "secret_refs": [],
+      "strategy": null,
+      "retry": null
     }
-  ]
+  ],
+  "env_names": [],
+  "env_refs": [],
+  "secret_refs": []
 }
