@@ -1,0 +1,64 @@
+{
+  "evaluation_version": "1",
+  "observed_on": "2026-09-18",
+  "language": "python",
+  "selected_backend": {
+    "backend_id": "python-stdlib-ast",
+    "decision": "keep-current-primary",
+    "kind": "in_process",
+    "parser": "CPython stdlib ast",
+    "semantic_companion": "CPython stdlib symtable (available for future symbol IR)",
+    "external_runtime_required": false,
+    "redistribution": "bundled CPython runtime through the existing PyInstaller distribution",
+    "license": "Python Software Foundation License"
+  },
+  "candidates": [
+    {
+      "id": "python-stdlib-ast+symtable",
+      "status": "selected",
+      "ast_fidelity": "high semantic AST fidelity for syntax supported by the running interpreter",
+      "symbol_resolution": "scope/name binding available through symtable; no full cross-module type/call resolution",
+      "incomplete_source_recovery": "none; syntax errors fail",
+      "packaging": "excellent; no additional dependency",
+      "common_ir_conversion": "lowest cost; current adapter already emits ModuleIR"
+    },
+    {
+      "id": "libcst",
+      "status": "not-selected-primary",
+      "ast_fidelity": "full-fidelity concrete syntax tree; preserves formatting",
+      "symbol_resolution": "ScopeProvider and QualifiedNameProvider metadata; not full arbitrary attribute/type resolution",
+      "incomplete_source_recovery": "not selected for incomplete-source recovery",
+      "packaging": "manageable but adds an external package/native build surface",
+      "license": "MIT with some PSF-derived files",
+      "common_ir_conversion": "medium; new CST-to-ModuleIR adapter required"
+    },
+    {
+      "id": "tree-sitter-python",
+      "status": "fallback-candidate",
+      "ast_fidelity": "strong incremental concrete syntax parsing",
+      "symbol_resolution": "syntax only; semantic/symbol layer must be built separately",
+      "incomplete_source_recovery": "strong relative advantage through error-tolerant incremental parsing",
+      "packaging": "manageable native/parser dependency; additional binding required",
+      "license": "MIT",
+      "common_ir_conversion": "medium-high; semantic reconstruction required"
+    }
+  ],
+  "selection_reasons": [
+    "Current Common IR is structural and already maps directly from stdlib ast.",
+    "No extra runtime or native dependency is required for the Windows onedir distribution.",
+    "symtable provides compiler scope data without leaking compiler-specific objects past the adapter boundary.",
+    "LibCST adds concrete-syntax fidelity that Kadoka does not currently consume enough to justify a primary-backend swap.",
+    "tree-sitter-python is retained as a future fallback candidate for incomplete/editor-buffer source."
+  ],
+  "known_limits": [
+    "Syntax coverage follows the Python interpreter version used to run Kadoka.",
+    "The selected backend does not perform complete cross-module type, overload, or call-target inference.",
+    "Incomplete source raises a normalized unsupported_syntax backend error."
+  ],
+  "sources": [
+    "https://docs.python.org/3/library/ast.html",
+    "https://docs.python.org/3/library/symtable.html",
+    "https://github.com/Instagram/LibCST",
+    "https://github.com/tree-sitter/tree-sitter-python"
+  ]
+}
