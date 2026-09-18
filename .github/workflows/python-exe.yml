@@ -66,6 +66,12 @@ jobs:
             Write-Error "Unexpected EXE output: $output"
             exit 1
           }
+          $backendOutput = & $exe backend-smoke gdscript
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          if ($backendOutput -notmatch "gdscript-tree-sitter") {
+            Write-Error "GDScript backend smoke failed: $backendOutput"
+            exit 1
+          }
 
       - name: Upload Windows app directory
         uses: actions/upload-artifact@v4
