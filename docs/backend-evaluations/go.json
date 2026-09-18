@@ -1,0 +1,94 @@
+{
+  "evaluation_version": "1",
+  "observed_on": "2026-09-18",
+  "language": "go",
+  "selected_backend": {
+    "backend_id": "go-stdlib-types-helper",
+    "role": "primary-syntax-and-semantic",
+    "implementation_status": "selected-not-yet-integrated",
+    "source_repository": "golang/go",
+    "api": "go/parser + go/ast + go/types + go/token",
+    "kind": "helper",
+    "external_go_toolchain_required_at_runtime": false,
+    "external_go_runtime_required": false,
+    "license": "BSD-style Go license"
+  },
+  "helper_distribution": {
+    "directory": "backends/go/",
+    "entrypoint": "kadoka-go-backend.exe",
+    "build": "compile helper in CI with Go, distribute the resulting native executable",
+    "protocol": "Parser Backend Contract v1 JSON",
+    "stdout": "protocol-only",
+    "stderr": "diagnostics/logging",
+    "runtime_note": "Go runtime is linked into the helper executable; user does not install Go"
+  },
+  "candidates": [
+    {
+      "id": "go-stdlib-parser-types",
+      "status": "selected",
+      "syntax_fidelity": "official Go parser/AST for the helper's Go language version",
+      "symbol_resolution": "go/types performs name resolution, type deduction, interface/generic checking and exposes Defs/Uses/Selections",
+      "packages_imports": "project sources can be grouped and type-checked with a custom importer/resolver",
+      "interfaces_generics": "compiler-library type checker semantics",
+      "incomplete_source_recovery": "parser/type checker diagnostics and partial AST are available for some errors; not optimized for malformed editor buffers",
+      "packaging": "single native helper executable; no external Go runtime/toolchain required",
+      "license": "BSD-style Go license"
+    },
+    {
+      "id": "go-packages",
+      "status": "optional-toolchain-aware-mode",
+      "source_repository": "golang/tools",
+      "syntax_fidelity": "loads parsed syntax and complete Types/TypesInfo when requested",
+      "symbol_resolution": "excellent project/package loading when build environment is available",
+      "packages_imports": "strong module/build-system-aware loader",
+      "runtime_constraint": "default driver invokes the go command; therefore not a mandatory runtime path",
+      "license": "BSD-style Go license"
+    },
+    {
+      "id": "gopls",
+      "status": "not-selected-primary",
+      "syntax_fidelity": "rich language-server analysis",
+      "symbol_resolution": "strong workspace semantics",
+      "runtime_constraint": "workspace loading depends on Go tooling/module environment and protocol surface is larger than Kadoka needs",
+      "packaging": "could bundle binary, but would still increase integration and toolchain/environment assumptions",
+      "license": "BSD-style Go license"
+    },
+    {
+      "id": "tree-sitter-go",
+      "status": "fallback-candidate",
+      "syntax_fidelity": "strong incremental Go syntax grammar",
+      "symbol_resolution": "syntax-only",
+      "packages_imports": "syntactic only",
+      "interfaces_generics": "syntactic only",
+      "incomplete_source_recovery": "strong editor-buffer fallback",
+      "packaging": "small native parser/binding",
+      "license": "MIT"
+    },
+    {
+      "id": "regex-comment-adapter",
+      "status": "existing-comment-only-not-analysis-backend",
+      "syntax_fidelity": "insufficient for Common IR semantic analysis",
+      "symbol_resolution": "none"
+    }
+  ],
+  "project_strategy": {
+    "package_grouping": "group discovered .go files by directory/package declaration",
+    "internal_imports": "Kadoka project discovery resolves project-local source packages and feeds them to the helper importer",
+    "vendored_sources": "prefer discovered vendor/source trees when present",
+    "external_imports": "unavailable external packages remain explicitly unresolved in self-contained mode",
+    "toolchain_mode": "optionally enable go/packages only when a compatible Go toolchain is intentionally available; never silently require it",
+    "common_ir_boundary": "only normalized Common IR/wire DTOs cross into the Python host"
+  },
+  "known_limits": [
+    "Exact module/build-tag behavior can depend on the Go toolchain, GOOS/GOARCH and build constraints.",
+    "Self-contained mode may not fully resolve external module packages unless source/vendor metadata is available.",
+    "The helper's parser syntax ceiling follows the Go version used to build the backend.",
+    "go/packages is not used as the mandatory path because its default driver invokes the go command."
+  ],
+  "follow_up_required": true,
+  "sources": [
+    "https://github.com/golang/go",
+    "https://github.com/golang/tools/tree/master/go/packages",
+    "https://github.com/tree-sitter/tree-sitter-go"
+  ]
+}
