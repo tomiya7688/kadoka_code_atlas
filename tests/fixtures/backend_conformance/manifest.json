@@ -1,0 +1,54 @@
+{
+  "contract_version": "1",
+  "fixture_id": "semantic-core-v1",
+  "languages": {
+    "python": {
+      "source": "python.py",
+      "generic_probe": "native",
+      "async_probe": "native",
+      "nested_scope_probe": "local-function"
+    },
+    "gdscript": {
+      "source": "gdscript.gd",
+      "generic_probe": "typed-container-only",
+      "async_probe": "native-await",
+      "nested_scope_probe": "lambda"
+    },
+    "csharp": {
+      "source": "csharp.cs",
+      "generic_probe": "native",
+      "async_probe": "native",
+      "nested_scope_probe": "local-function"
+    },
+    "cpp": {
+      "source": "cpp.cpp",
+      "generic_probe": "template",
+      "async_probe": "library-future",
+      "nested_scope_probe": "lambda"
+    },
+    "java": {
+      "source": "java.java",
+      "generic_probe": "native",
+      "async_probe": "completion-stage",
+      "nested_scope_probe": "lambda"
+    },
+    "go": {
+      "source": "go.go",
+      "generic_probe": "native",
+      "async_probe": "goroutine",
+      "nested_scope_probe": "closure"
+    }
+  },
+  "required_cases": [
+    "import",
+    "class",
+    "method",
+    "call",
+    "duplicate-call",
+    "inheritance",
+    "generic-probe",
+    "async-probe",
+    "nested-scope-probe"
+  ],
+  "golden": "expected_common_ir_v1.json"
+}
