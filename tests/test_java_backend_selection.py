@@ -19,7 +19,7 @@ def test_java_conformance_fixture_covers_semantic_selection_features() -> None:
         "T helper(T item)",
         "T helper(T item, int count)",
         "Function<T, T> nested = value -> value",
-        "CompletionStage<T> async_probe",
+        "CompletableFuture<T> async_probe",
     ):
         assert marker in source
 
