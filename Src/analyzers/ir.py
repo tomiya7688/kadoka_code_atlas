@@ -110,6 +110,25 @@ class InputEventIR:
 
 
 @dataclass(slots=True)
+class SignalIR:
+    """Passive event/signal declaration normalized by a language adapter."""
+
+    name: str
+    line: int
+    owner: str | None = None
+    parameters: tuple[str, ...] = ()
+
+
+@dataclass(slots=True)
+class DiagnosticIR:
+    """Language-independent parser/semantic diagnostic."""
+
+    kind: str
+    message: str
+    line: int | None = None
+
+
+@dataclass(slots=True)
 class ModuleIR:
     """Normalized representation of one source module/file."""
 
@@ -119,4 +138,6 @@ class ModuleIR:
     state_machines: list[StateMachineIR] = field(default_factory=list)
     timing_flows: list[TimingFlowIR] = field(default_factory=list)
     input_events: list[InputEventIR] = field(default_factory=list)
+    signals: list[SignalIR] = field(default_factory=list)
+    diagnostics: list[DiagnosticIR] = field(default_factory=list)
     imports: tuple[str, ...] = ()
