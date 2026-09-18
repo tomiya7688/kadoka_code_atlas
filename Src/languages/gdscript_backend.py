@@ -209,7 +209,7 @@ class _GDScriptIRBuilder:
         args = node.child_by_field_name("arguments")
         candidates = [
             child for child in node.named_children
-            if args is None or child.id != args.id
+            if child.type != "arguments"
         ]
         if not candidates:
             return None
