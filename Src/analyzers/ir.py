@@ -9,6 +9,7 @@ from enum import Enum
 class EntityKind(str, Enum):
     MODULE = "module"
     CLASS = "class"
+    INTERFACE = "interface"
     FUNCTION = "function"
     METHOD = "method"
 
@@ -38,6 +39,8 @@ class CodeEntity:
     call_sequence: tuple[str, ...] = ()
     visibility: Visibility = Visibility.UNSPECIFIED
     bases: tuple[str, ...] = ()
+    type_parameters: tuple[str, ...] = ()
+    interfaces: tuple[str, ...] = ()
 
 
 @dataclass(slots=True)
@@ -129,6 +132,29 @@ class DiagnosticIR:
 
 
 @dataclass(slots=True)
+class DependencyIR:
+    """Passive source dependency and resolution state."""
+
+    reference: str
+    kind: str
+    line: int | None = None
+    resolved: bool = False
+    target: str | None = None
+
+
+@dataclass(slots=True)
+class SymbolReferenceIR:
+    """Passive symbol use normalized by a semantic backend."""
+
+    kind: str
+    name: str
+    line: int
+    owner: str | None = None
+    resolved: bool = False
+    target: str | None = None
+
+
+@dataclass(slots=True)
 class ModuleIR:
     """Normalized representation of one source module/file."""
 
@@ -140,4 +166,6 @@ class ModuleIR:
     input_events: list[InputEventIR] = field(default_factory=list)
     signals: list[SignalIR] = field(default_factory=list)
     diagnostics: list[DiagnosticIR] = field(default_factory=list)
+    dependencies: list[DependencyIR] = field(default_factory=list)
+    references: list[SymbolReferenceIR] = field(default_factory=list)
     imports: tuple[str, ...] = ()
