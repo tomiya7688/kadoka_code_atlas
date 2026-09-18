@@ -1,0 +1,1 @@
+This helper uses the Go standard library and is distributed under the Go project license terms. See https://go.dev/LICENSE.
