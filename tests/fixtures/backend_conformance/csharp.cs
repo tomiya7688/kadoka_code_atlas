@@ -1,17 +1,27 @@
 using System.Threading.Tasks;
 using Support;
 
+public interface IWorker<T>
+{
+    T run(T item);
+}
+
 public class BaseWorker
 {
 }
 
-public class Worker<T> : BaseWorker
+public class Worker<T> : BaseWorker, IWorker<T>
 {
     public T run(T item)
     {
         helper(item);
         helper(item);
         return item;
+    }
+
+    public T run(T item, int count)
+    {
+        return count > 0 ? helper(item) : item;
     }
 
     public T helper(T item) => item;

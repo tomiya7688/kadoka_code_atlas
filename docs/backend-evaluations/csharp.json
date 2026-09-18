@@ -1,0 +1,80 @@
+{
+  "evaluation_version": "1",
+  "observed_on": "2026-09-18",
+  "language": "csharp",
+  "selected_backend": {
+    "backend_id": "csharp-roslyn-helper",
+    "role": "primary-syntax-and-semantic",
+    "implementation_status": "selected-not-yet-integrated",
+    "source_repository": "dotnet/roslyn",
+    "api": "Microsoft.CodeAnalysis.CSharp",
+    "kind": "helper",
+    "external_sdk_required_at_runtime": false,
+    "external_dotnet_runtime_required": false,
+    "license": "MIT"
+  },
+  "helper_distribution": {
+    "directory": "backends/csharp/",
+    "entrypoint": "kadoka-csharp-backend.exe",
+    "publish_mode": "self-contained",
+    "runtime_identifier": "win-x64",
+    "publish_single_file": false,
+    "publish_trimmed": false,
+    "protocol": "Parser Backend Contract v1 JSON",
+    "stdout": "protocol-only",
+    "stderr": "diagnostics/logging",
+    "runtime_note": "publish output includes the .NET runtime; no separately installed .NET runtime is required"
+  },
+  "candidates": [
+    {
+      "id": "roslyn",
+      "status": "selected",
+      "syntax_fidelity": "authoritative C# compiler syntax trees",
+      "symbol_resolution": "full SemanticModel/Symbol APIs for resolved compilations",
+      "overload_resolution": "compiler-native overload binding",
+      "inheritance_interfaces": "compiler-native symbols and conversion/type relationships",
+      "generics": "compiler-native generic symbols/type arguments/constraints",
+      "incomplete_source_recovery": "compiler syntax trees and diagnostics remain available for many invalid/incomplete inputs",
+      "maintenance": "active .NET compiler platform",
+      "packaging": "self-contained helper folder bundled under backends/csharp",
+      "license": "MIT"
+    },
+    {
+      "id": "tree-sitter-c-sharp",
+      "status": "fallback-candidate",
+      "syntax_fidelity": "strong incremental C# syntax grammar",
+      "symbol_resolution": "syntax-only; cannot resolve semantic cast/overload ambiguities by itself",
+      "overload_resolution": "none without a separate semantic layer",
+      "incomplete_source_recovery": "strong editor-buffer fallback",
+      "maintenance": "active",
+      "packaging": "native tree-sitter binding/parser assets",
+      "license": "MIT"
+    },
+    {
+      "id": "regex-comment-adapter",
+      "status": "existing-comment-only-not-analysis-backend",
+      "syntax_fidelity": "insufficient for semantic Common IR analysis",
+      "symbol_resolution": "none",
+      "packaging": "trivial"
+    }
+  ],
+  "helper_semantic_strategy": {
+    "project_sources": "collect project C# sources and create Roslyn syntax trees/compilations",
+    "framework_references": "derive runtime framework metadata references inside the self-contained helper",
+    "project_references": "resolve source/project references through Kadoka project discovery; do not require MSBuildWorkspace initially",
+    "unity_references": "use project-resolvable Unity assemblies when available; unresolved external symbols must remain explicitly unresolved",
+    "common_ir_boundary": "only normalized Common IR/wire DTOs cross into the Python host"
+  },
+  "known_limits": [
+    "Full semantic resolution depends on having enough project source and metadata references.",
+    "Unity/editor-specific assemblies may be unresolved when the project does not expose usable references.",
+    "MSBuildWorkspace is not required in the initial helper design to avoid an SDK/MSBuild runtime dependency.",
+    "tree-sitter-c-sharp remains a possible fallback for malformed editor buffers if Roslyn recovery proves insufficient for a product use case."
+  ],
+  "follow_up_required": true,
+  "sources": [
+    "https://github.com/dotnet/roslyn",
+    "https://github.com/tree-sitter/tree-sitter-c-sharp",
+    "https://learn.microsoft.com/dotnet/core/deploying/"
+  ]
+}
