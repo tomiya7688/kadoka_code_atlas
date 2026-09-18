@@ -1,7 +1,6 @@
 package fixture;
 
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CompletionStage;
 import java.util.function.Function;
 import support.Service;
 
@@ -28,7 +27,7 @@ class Worker<T> extends BaseWorker implements WorkContract<T> {
         return item;
     }
 
-    CompletionStage<T> async_probe(T item) {
+    CompletableFuture<T> async_probe(T item) {
         return CompletableFuture.completedFuture(item);
     }
 
