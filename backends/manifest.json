@@ -1,5 +1,17 @@
 {
   "manifest_version": "1",
   "parser_backend_contract_version": "1",
-  "backends": []
+  "backends": [
+    {
+      "backend_id": "gdscript-tree-sitter",
+      "language": "gdscript",
+      "kind": "native",
+      "contract_version": "1",
+      "delivery": "python-package",
+      "packages": [
+        "tree-sitter",
+        "tree-sitter-gdscript"
+      ]
+    }
+  ]
 }
