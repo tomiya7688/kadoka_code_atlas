@@ -11,6 +11,10 @@
       "packages": [
         "tree-sitter",
         "tree-sitter-gdscript"
+      ],
+      "licenses": [
+        "licenses/tree-sitter-LICENSE.txt",
+        "licenses/tree-sitter-gdscript-LICENSE.txt"
       ]
     }
   ]
