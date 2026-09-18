@@ -1,0 +1,84 @@
+{
+  "evaluation_version": "1",
+  "observed_on": "2026-09-18",
+  "language": "cpp",
+  "selected_backend": {
+    "backend_id": "cpp-clang-tooling-helper",
+    "role": "primary-syntax-and-semantic",
+    "implementation_status": "selected-not-yet-integrated",
+    "source_repository": "llvm/llvm-project",
+    "api": "Clang LibTooling / C++ AST",
+    "kind": "helper",
+    "external_llvm_required_at_runtime": false,
+    "license": "Apache-2.0 WITH LLVM-exception"
+  },
+  "candidates": [
+    {
+      "id": "clang-libtooling-helper",
+      "status": "selected",
+      "syntax_fidelity": "compiler-authoritative C/C++ parser and full C++ AST/Sema integration",
+      "templates": "compiler-native template declarations/instantiations",
+      "overload_resolution": "compiler-native when translation unit arguments/references are sufficient",
+      "includes_macros": "preprocessor and include graph available from Clang frontend/tooling",
+      "incomplete_source_recovery": "diagnostics and recoverable AST where Clang can continue",
+      "packaging": "bundle helper plus required Clang/LLVM runtime and builtin resource headers",
+      "license": "Apache-2.0 WITH LLVM-exception"
+    },
+    {
+      "id": "libclang-c-api",
+      "status": "not-selected-primary",
+      "syntax_fidelity": "stable high-level Clang C API",
+      "templates": "partial/high-level exposure",
+      "overload_resolution": "limited relative to full C++ AST/Sema",
+      "includes_macros": "translation unit/preprocessor information available but API intentionally does not expose all Clang AST information",
+      "packaging": "bundle libclang native library",
+      "license": "Apache-2.0 WITH LLVM-exception"
+    },
+    {
+      "id": "tree-sitter-cpp",
+      "status": "fallback-candidate",
+      "syntax_fidelity": "strong incremental C++ syntax grammar",
+      "templates": "syntactic only",
+      "overload_resolution": "none without semantic layer",
+      "includes_macros": "syntax/preprocessor structure only",
+      "incomplete_source_recovery": "strong editor-buffer fallback",
+      "packaging": "native tree-sitter parser assets",
+      "license": "MIT"
+    },
+    {
+      "id": "regex-comment-adapter",
+      "status": "existing-comment-only-not-analysis-backend",
+      "syntax_fidelity": "insufficient for Common IR semantic analysis"
+    }
+  ],
+  "helper_distribution": {
+    "directory": "backends/cpp/",
+    "entrypoint": "kadoka-cpp-backend.exe",
+    "protocol": "Parser Backend Contract v1 JSON",
+    "bundled_assets": [
+      "helper executable",
+      "Clang/LLVM runtime libraries or statically linked equivalents",
+      "Clang builtin resource headers"
+    ],
+    "external_compiler_required": false,
+    "external_sdk_policy": "do not require LLVM installation; project/system SDK headers may improve semantic completeness when available"
+  },
+  "project_strategy": {
+    "preferred_compile_configuration": "compile_commands.json",
+    "fallback": "conservative language defaults plus discovered include paths",
+    "missing_headers": "emit diagnostics and unresolved facts; do not invent symbols",
+    "system_headers": "do not silently claim complete semantics when required platform/toolchain headers are unavailable"
+  },
+  "known_limits": [
+    "Exact C++ semantics depend strongly on compile flags, macros and include paths.",
+    "Bundling Clang does not automatically provide every platform/vendor standard library or SDK header.",
+    "Translation units with missing headers may still yield partial AST/diagnostics but symbol resolution can be incomplete.",
+    "tree-sitter-cpp may be used later for malformed editor-buffer syntax fallback."
+  ],
+  "follow_up_required": true,
+  "sources": [
+    "https://github.com/llvm/llvm-project",
+    "https://github.com/llvm/llvm-project/blob/main/clang/include/clang-c/Index.h",
+    "https://github.com/tree-sitter/tree-sitter-cpp"
+  ]
+}
