@@ -1,13 +1,20 @@
 package fixture;
 
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionStage;
+import java.util.function.Function;
 import support.Service;
+
+interface WorkContract<T> {
+    T run(T item);
+}
 
 class BaseWorker {
 }
 
-class Worker<T> extends BaseWorker {
-    T run(T item) {
+class Worker<T> extends BaseWorker implements WorkContract<T> {
+    @Override
+    public T run(T item) {
         helper(item);
         helper(item);
         return item;
@@ -17,12 +24,16 @@ class Worker<T> extends BaseWorker {
         return item;
     }
 
-    CompletableFuture<T> async_probe(T item) {
+    T helper(T item, int count) {
+        return item;
+    }
+
+    CompletionStage<T> async_probe(T item) {
         return CompletableFuture.completedFuture(item);
     }
 
     T nested_probe(T item) {
-        java.util.function.Function<T, T> nested = value -> value;
+        Function<T, T> nested = value -> value;
         return nested.apply(item);
     }
 }
