@@ -31,8 +31,7 @@ from Src.generators.package_diagram import build_package_diagram_bundle
 from Src.generators.responsibility import build_responsibility_table_bundle
 from Src.generators.sequence_diagram import SequenceDiagramOptions, build_sequence_diagram_bundle
 from Src.generators.state_diagram import build_state_diagram_bundle
-from Src.languages.python import PythonLanguageAdapter
-from Src.languages.python_project import PythonProjectLanguageAdapter
+from Src.languages.python_backend import PythonStdlibBackend
 from Src.models.config import AtlasConfig
 from Src.renderers import (
     render_call_graph,
@@ -441,12 +440,12 @@ class ApplicationService:
         if not request.root.is_dir():
             raise ValueError("Project dependency analysis expects a project folder.")
 
-        adapter = PythonProjectLanguageAdapter()
+        backend = PythonStdlibBackend()
         units: list[tuple[Path, ModuleDependencyUnit]] = []
         for path in discover_supported_files(request.root):
             if path.suffix.lower() != ".py":
                 continue
-            module = adapter.parse(read_text(path))
+            module = backend.parse(read_text(path), str(path))
             units.append(
                 (
                     path,
@@ -464,4 +463,4 @@ class ApplicationService:
         language = request.language.lower().lstrip(".")
         if language not in {"python", "py"}:
             raise ValueError("This analysis is currently available for Python source files only.")
-        return PythonLanguageAdapter().parse(read_text(request.source))
+        return PythonStdlibBackend().parse(read_text(request.source), str(request.source))
