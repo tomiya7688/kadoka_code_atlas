@@ -1,8 +1,13 @@
 package fixture
 
 import (
+    "context"
     "example/support"
 )
+
+type WorkContract[T any] interface {
+    run(T) T
+}
 
 type BaseWorker struct{}
 
@@ -20,13 +25,18 @@ func (w Worker[T]) helper(item T) T {
     return item
 }
 
-func (w Worker[T]) async_probe(item T) T {
+func (w Worker[T]) async_probe(ctx context.Context, item T) T {
     done := make(chan T, 1)
     go func(value T) {
         support.Touch(value)
         done <- value
     }(item)
-    return <-done
+    select {
+    case <-ctx.Done():
+        return item
+    case value := <-done:
+        return value
+    }
 }
 
 func (w Worker[T]) nested_probe(item T) T {
