@@ -1,0 +1,95 @@
+{
+  "evaluation_version": "1",
+  "observed_on": "2026-09-18",
+  "language": "gdscript",
+  "selected_backend": {
+    "backend_id": "gdscript-tree-sitter",
+    "role": "primary-syntax",
+    "implementation_status": "selected-not-yet-integrated",
+    "source_repository": "PrestonKnopp/tree-sitter-gdscript",
+    "package": "tree-sitter-gdscript",
+    "observed_release": "v6.1.0",
+    "kind": "native-in-process",
+    "external_godot_runtime_required": false,
+    "license": "MIT",
+    "redistribution": "bundle Python binding/parser native assets inside the existing Windows onedir distribution"
+  },
+  "semantic_strategy": {
+    "project_resolver": "Kadoka-owned Godot project semantic resolver",
+    "responsibilities": [
+      "res:// path resolution",
+      "preload/load resource edges",
+      "class_name registry",
+      "Node/Resource/script inheritance relationships",
+      "signal connection resolution where statically available"
+    ],
+    "godot_engine_helper": "not selected initially"
+  },
+  "required_syntax_features": [
+    "class_name",
+    "extends",
+    "signal",
+    "preload",
+    "load",
+    "annotations",
+    "typed variables",
+    "typed containers",
+    "await",
+    "lambda",
+    "match"
+  ],
+  "candidates": [
+    {
+      "id": "tree-sitter-gdscript",
+      "status": "selected-primary-syntax",
+      "repository": "PrestonKnopp/tree-sitter-gdscript",
+      "syntax_fidelity": "high; grammar explicitly models signal, class_name, extends, annotations, await, lambda and Godot-specific path/string constructs",
+      "symbol_resolution": "syntax-only; requires Kadoka semantic/project resolver",
+      "error_recovery": "tree-sitter error-tolerant incremental parsing",
+      "maintenance": "active; observed commits through 2026-07-13",
+      "packaging": "Python package/native parser can be bundled in onedir without requiring Godot installation",
+      "license": "MIT"
+    },
+    {
+      "id": "gdquest-tree-sitter-gdscript",
+      "status": "tracked-mirror/fork",
+      "repository": "GDQuest/tree-sitter-gdscript",
+      "syntax_fidelity": "same grammar family; current observed head aligned with upstream commits",
+      "symbol_resolution": "syntax-only",
+      "maintenance": "active contributions observed in 2026",
+      "packaging": "same tree-sitter native binding model",
+      "license": "MIT"
+    },
+    {
+      "id": "godot-gdscript-parser",
+      "status": "not-selected-runtime-backend",
+      "repository": "godotengine/godot",
+      "syntax_fidelity": "authoritative parser and richest Godot-native type/parser model",
+      "symbol_resolution": "best access to GDScript parser/type model when integrated with engine/project context",
+      "error_recovery": "compiler/parser diagnostics available",
+      "packaging": "poor for Kadoka desktop use; parser is coupled to Godot engine core/cache/resource/script types",
+      "license": "MIT",
+      "reason_not_selected": "would require shipping/maintaining a substantial Godot-derived helper or requiring Godot runtime; excessive for initial offline source analysis"
+    },
+    {
+      "id": "regex-comment-adapter",
+      "status": "existing-comment-only-not-analysis-backend",
+      "syntax_fidelity": "insufficient for Common IR analysis",
+      "symbol_resolution": "none",
+      "packaging": "trivial",
+      "reason_not_selected": "current Src.languages.gdscript adapter is intentionally conservative comment extraction, not an AST/Semantic backend"
+    }
+  ],
+  "known_limits": [
+    "tree-sitter alone cannot resolve Godot scene/resource/project semantics.",
+    "preload/load calls are syntactically visible but res:// target resolution must be performed by a project resolver.",
+    "Node/Resource/native class knowledge requires a Godot API/type catalogue or project semantic layer.",
+    "signal declaration syntax is available; dynamic signal connection targets may remain unresolved."
+  ],
+  "follow_up_required": true,
+  "sources": [
+    "https://github.com/PrestonKnopp/tree-sitter-gdscript",
+    "https://github.com/GDQuest/tree-sitter-gdscript",
+    "https://github.com/godotengine/godot/blob/master/modules/gdscript/gdscript_parser.h"
+  ]
+}
