@@ -17,6 +17,7 @@ from .gdscript import GDScriptAdapter
 from .go import GoAdapter
 from .java import JavaAdapter
 from .python import PythonLanguageAdapter
+from .python_backend import PythonStdlibBackend
 from .python_comments_adapter import PythonAdapter
 
 __all__ = [
@@ -35,5 +36,6 @@ __all__ = [
     "ParserBackendKind",
     "PythonAdapter",
     "PythonLanguageAdapter",
+    "PythonStdlibBackend",
     "normalize_backend_exception",
 ]
