@@ -100,6 +100,8 @@ def main(argv: list[str] | None = None) -> int:
     sequence_diagram.add_argument("--max-depth", type=int, default=8)
     sequence_diagram.add_argument("--hide-duplicate-calls", action="store_true")
     sequence_diagram.add_argument("--show-returns", action="store_true")
+    backend_smoke = sub.add_parser("backend-smoke", help=argparse.SUPPRESS)
+    backend_smoke.add_argument("language", choices=("gdscript",))
     args = parser.parse_args(arguments)
 
     if args.version:
@@ -116,10 +118,24 @@ def main(argv: list[str] | None = None) -> int:
         "call-graph",
         "class-diagram",
         "sequence-diagram",
+        "backend-smoke",
     }
     if args.command not in supported:
         parser.print_help()
         return 0
+
+    if args.command == "backend-smoke":
+        if args.language == "gdscript":
+            from Src.languages import GDScriptTreeSitterBackend
+
+            module = GDScriptTreeSitterBackend().parse(
+                "class_name Smoke\nextends RefCounted\nfunc run():\n    pass\n",
+                "<backend-smoke>",
+            )
+            if not any(entity.name == "Smoke" for entity in module.entities):
+                return 1
+            print(GDScriptTreeSitterBackend.descriptor.backend_id)
+            return 0
 
     if args.command == "deployment":
         deployment_service = DeploymentService()

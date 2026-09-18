@@ -14,6 +14,8 @@ from .base import LanguageAdapter
 from .csharp import CSharpAdapter
 from .cpp import CppAdapter
 from .gdscript import GDScriptAdapter
+from .gdscript_backend import GDScriptTreeSitterBackend
+from .gdscript_project import FilesystemGDScriptProjectResolver, GDScriptProjectResolver
 from .go import GoAdapter
 from .java import JavaAdapter
 from .python import PythonLanguageAdapter
@@ -23,7 +25,10 @@ from .python_comments_adapter import PythonAdapter
 __all__ = [
     "CSharpAdapter",
     "CppAdapter",
+    "FilesystemGDScriptProjectResolver",
     "GDScriptAdapter",
+    "GDScriptProjectResolver",
+    "GDScriptTreeSitterBackend",
     "GoAdapter",
     "JavaAdapter",
     "LanguageAdapter",
