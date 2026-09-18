@@ -1,0 +1,58 @@
+{
+  "contract_version": "1",
+  "projection": "common-ir-semantic-subset",
+  "required_entities": [
+    {
+      "kind": "class",
+      "name": "BaseWorker"
+    },
+    {
+      "kind": "class",
+      "name": "Worker",
+      "bases": [
+        "BaseWorker"
+      ]
+    },
+    {
+      "kind": "method",
+      "name": "run",
+      "parent": "Worker"
+    },
+    {
+      "kind": "method",
+      "name": "helper",
+      "parent": "Worker"
+    },
+    {
+      "kind": "method",
+      "name": "async_probe",
+      "parent": "Worker"
+    },
+    {
+      "kind": "method",
+      "name": "nested_probe",
+      "parent": "Worker"
+    }
+  ],
+  "required_call_counts": [
+    {
+      "owner": "Worker.run",
+      "target": "helper",
+      "count": 2
+    }
+  ],
+  "requirements": {
+    "imports": true,
+    "inheritance": true,
+    "generic": "capability-probe",
+    "async": "capability-probe",
+    "nested_scope": "capability-probe"
+  },
+  "intentionally_ignored": [
+    "source line numbers",
+    "indentation",
+    "backend AST node names",
+    "backend symbol object identities",
+    "provider-specific diagnostics"
+  ]
+}
