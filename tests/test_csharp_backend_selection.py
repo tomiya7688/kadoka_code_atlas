@@ -53,4 +53,4 @@ def test_csharp_selection_keeps_tree_sitter_as_syntax_fallback_only() -> None:
 
     assert tree_sitter["status"] == "fallback-candidate"
     assert tree_sitter["overload_resolution"] == "none without a separate semantic layer"
-    assert evaluation["follow_up_required"] is True
+    assert evaluation["follow_up_required"] is False
