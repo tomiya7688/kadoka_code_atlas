@@ -9,6 +9,16 @@ if %errorlevel%==0 (
     set "PYTHON=python"
 )
 
+where dotnet >nul 2>nul
+if errorlevel 1 (
+    echo .NET SDK 10 is required to build the bundled C# Roslyn backend.
+    exit /b 1
+)
+
+if exist "backends\csharp" rmdir /S /Q "backends\csharp"
+dotnet publish "backend-src\csharp\Kadoka.CSharp.Backend.csproj" -c Release -r win-x64 --self-contained true -p:PublishSingleFile=false -p:PublishTrimmed=false -o "backends\csharp"
+if errorlevel 1 exit /b 1
+
 %PYTHON% -m pip install -e ".[exe]"
 if errorlevel 1 exit /b 1
 

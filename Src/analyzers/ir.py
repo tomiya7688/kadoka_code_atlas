@@ -38,6 +38,12 @@ class CodeEntity:
     call_sequence: tuple[str, ...] = ()
     visibility: Visibility = Visibility.UNSPECIFIED
     bases: tuple[str, ...] = ()
+    declaration_kind: str | None = None
+    type_parameters: tuple[str, ...] = ()
+    type_constraints: tuple[str, ...] = ()
+    resolved_calls: tuple[str, ...] = ()
+    symbol_id: str | None = None
+    is_async: bool = False
 
 
 @dataclass(slots=True)

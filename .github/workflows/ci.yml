@@ -68,6 +68,31 @@ jobs:
           python tools/context_tool.py search "Common IR" --max-results 5 > /tmp/kca-search.json
           python tools/context_tool.py path-find "*.py" --max-results 5 > /tmp/kca-paths.json
 
+
+  csharp-backend:
+    name: C# Roslyn backend
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up .NET 10
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Build Roslyn helper
+        run: dotnet build backend-src/csharp/Kadoka.CSharp.Backend.csproj -c Release
+
+      - name: Run Roslyn conformance smoke
+        run: python tools/csharp_backend_smoke.py dotnet backend-src/csharp/bin/Release/net10.0/kadoka-csharp-backend.dll
+
   oop-design:
     name: OOP design policy
     runs-on: ubuntu-latest
@@ -110,11 +135,34 @@ jobs:
         if: steps.csharp.outputs.present == 'true'
         shell: bash
         run: |
-          dotnet run \
-            --project "$RUNNER_TEMP/oop-design-checker/src/frontends/cui/OopDesignChecker.Cui.csproj" \
-            -- . \
-            --config oop-design-checker.json \
-            --fail-on danger \
-            --format github
+          mapfile -t projects < <(
+            find . -type f -name '*.csproj' \
+              -not -path './.git/*' \
+              -not -path './.dev/*' \
+              -not -path './build/*' \
+              -not -path './dist/*' \
+              -not -path './tests/*' \
+              | sort
+          )
+          if [ "${#projects[@]}" -gt 0 ]; then
+            for project in "${projects[@]}"; do
+              echo "Restoring $project for OOP design analysis"
+              dotnet restore "$project"
+              echo "Checking OOP design for $project"
+              dotnet run \
+                --project "$RUNNER_TEMP/oop-design-checker/src/frontends/cui/OopDesignChecker.Cui.csproj" \
+                -- "$project" \
+                --config "$GITHUB_WORKSPACE/oop-design-checker.json" \
+                --fail-on danger \
+                --format github
+            done
+          else
+            dotnet run \
+              --project "$RUNNER_TEMP/oop-design-checker/src/frontends/cui/OopDesignChecker.Cui.csproj" \
+              -- . \
+              --config "$GITHUB_WORKSPACE/oop-design-checker.json" \
+              --fail-on danger \
+              --format github
+          fi
 
 

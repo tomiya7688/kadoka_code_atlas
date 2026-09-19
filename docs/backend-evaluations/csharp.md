@@ -124,11 +124,20 @@ the .NET SDK or MSBuild.
 - Roslyn: MIT.
 - tree-sitter-c-sharp: MIT.
 
-## Follow-up
+## Implementation status
 
-#134 records the selection. The helper implementation, Common IR conversion,
-versioned IPC integration, Windows build and onedir bundling are a separate
-implementation issue.
+The selected backend is integrated by #150.
+
+- helper source: `backend-src/csharp/`
+- Python host: `Src/languages/csharp_backend.py`
+- shared subprocess protocol host: `Src/languages/helper_backend.py`
+- runtime path: `backends/csharp/kadoka-csharp-backend.exe`
+- build: self-contained `win-x64`, not single-file, not trimmed
+- Linux CI: Roslyn helper build + #131 fixture semantic smoke
+- Windows CI: publish + PyInstaller onedir + frozen EXE C# backend smoke
+
+The user-facing distribution does not require a separately installed .NET SDK
+or runtime.
 
 Sources checked on 2026-09-18:
 

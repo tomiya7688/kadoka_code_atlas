@@ -5,7 +5,7 @@
   "selected_backend": {
     "backend_id": "csharp-roslyn-helper",
     "role": "primary-syntax-and-semantic",
-    "implementation_status": "selected-not-yet-integrated",
+    "implementation_status": "integrated",
     "source_repository": "dotnet/roslyn",
     "api": "Microsoft.CodeAnalysis.CSharp",
     "kind": "helper",
@@ -71,10 +71,19 @@
     "MSBuildWorkspace is not required in the initial helper design to avoid an SDK/MSBuild runtime dependency.",
     "tree-sitter-c-sharp remains a possible fallback for malformed editor buffers if Roslyn recovery proves insufficient for a product use case."
   ],
-  "follow_up_required": true,
+  "follow_up_required": false,
   "sources": [
     "https://github.com/dotnet/roslyn",
     "https://github.com/tree-sitter/tree-sitter-c-sharp",
     "https://learn.microsoft.com/dotnet/core/deploying/"
-  ]
+  ],
+  "integration": {
+    "python_host": "Src/languages/csharp_backend.py",
+    "shared_helper_host": "Src/languages/helper_backend.py",
+    "helper_source": "backend-src/csharp/",
+    "manifest_path": "csharp/kadoka-csharp-backend.exe",
+    "windows_delivery": "self-contained win-x64 folder copied into PyInstaller onedir",
+    "ci_smoke": "tools/csharp_backend_smoke.py",
+    "frozen_smoke": "kadoka-code-atlas.exe backend-smoke csharp"
+  }
 }
