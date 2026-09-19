@@ -146,6 +146,8 @@ jobs:
           )
           if [ "${#projects[@]}" -gt 0 ]; then
             for project in "${projects[@]}"; do
+              echo "Restoring $project for OOP design analysis"
+              dotnet restore "$project"
               echo "Checking OOP design for $project"
               dotnet run \
                 --project "$RUNNER_TEMP/oop-design-checker/src/frontends/cui/OopDesignChecker.Cui.csproj" \
