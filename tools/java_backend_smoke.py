@@ -45,7 +45,7 @@ def main(argv: list[str] | None = None) -> int:
     worker = next(item for item in entities if item["kind"] == "class" and item["name"] == "Worker")
     interface = next(item for item in entities if item["kind"] == "class" and item["name"] == "WorkContract")
     runs = [item for item in entities if item["kind"] == "method" and item["name"] == "run"]
-    run = runs[0]
+    run = next(item for item in runs if item.get("parent") == "Worker")
 
     assert worker["type_parameters"] == ["T"]
     assert "BaseWorker" in worker["bases"]
