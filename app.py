@@ -101,7 +101,7 @@ def main(argv: list[str] | None = None) -> int:
     sequence_diagram.add_argument("--hide-duplicate-calls", action="store_true")
     sequence_diagram.add_argument("--show-returns", action="store_true")
     backend_smoke = sub.add_parser("backend-smoke", help=argparse.SUPPRESS)
-    backend_smoke.add_argument("language", choices=("gdscript",))
+    backend_smoke.add_argument("language", choices=("gdscript", "csharp"))
     args = parser.parse_args(arguments)
 
     if args.version:
@@ -135,6 +135,29 @@ def main(argv: list[str] | None = None) -> int:
             if not any(entity.name == "Smoke" for entity in module.entities):
                 return 1
             print(GDScriptTreeSitterBackend.descriptor.backend_id)
+            return 0
+        if args.language == "csharp":
+            from Src.languages import CSharpRoslynBackend
+
+            module = CSharpRoslynBackend().parse(
+                "public interface I<T> { T Run(T value); }\n"
+                "public class Smoke<T> : I<T> {\n"
+                "    public T Run(T value) { return Helper(value); }\n"
+                "    private T Helper(T value) { return value; }\n"
+                "}\n",
+                "<backend-smoke.cs>",
+            )
+            smoke = next(
+                (
+                    entity
+                    for entity in module.entities
+                    if entity.kind.value == "class" and entity.name == "Smoke"
+                ),
+                None,
+            )
+            if smoke is None or "I" not in smoke.bases or smoke.type_parameters != ("T",):
+                return 1
+            print(CSharpRoslynBackend.descriptor.backend_id)
             return 0
 
     if args.command == "deployment":
