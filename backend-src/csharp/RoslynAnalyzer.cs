@@ -258,7 +258,7 @@ internal sealed class RoslynAnalyzer
         return trusted
             .Split(Path.PathSeparator, StringSplitOptions.RemoveEmptyEntries)
             .Distinct(StringComparer.OrdinalIgnoreCase)
-            .Select(path => MetadataReference.CreateFromFile(path))
+            .Select(path => (MetadataReference)MetadataReference.CreateFromFile(path))
             .ToList();
     }
 
