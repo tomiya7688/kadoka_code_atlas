@@ -8,8 +8,14 @@
       "kind": "native",
       "contract_version": "1",
       "delivery": "python-package",
-      "packages": ["tree-sitter", "tree-sitter-gdscript"],
-      "licenses": ["licenses/tree-sitter-LICENSE.txt", "licenses/tree-sitter-gdscript-LICENSE.txt"]
+      "packages": [
+        "tree-sitter",
+        "tree-sitter-gdscript"
+      ],
+      "licenses": [
+        "licenses/tree-sitter-LICENSE.txt",
+        "licenses/tree-sitter-gdscript-LICENSE.txt"
+      ]
     },
     {
       "backend_id": "go-stdlib-types-helper",
@@ -18,7 +24,20 @@
       "contract_version": "1",
       "delivery": "native-helper",
       "path": "go/kadoka-go-backend.exe",
-      "licenses": ["go/NOTICE.txt"]
+      "licenses": [
+        "go/NOTICE.txt"
+      ]
+    },
+    {
+      "backend_id": "csharp-roslyn-helper",
+      "language": "csharp",
+      "kind": "helper",
+      "contract_version": "1",
+      "delivery": "self-contained-dotnet-helper",
+      "path": "csharp/kadoka-csharp-backend.exe",
+      "licenses": [
+        "licenses/roslyn-LICENSE.txt"
+      ]
     }
   ]
 }
