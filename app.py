@@ -159,6 +159,30 @@ def main(argv: list[str] | None = None) -> int:
                 return 1
             print(CSharpRoslynBackend.descriptor.backend_id)
             return 0
+        if args.language == "java":
+            from Src.languages import JavaParserSymbolSolverBackend
+
+            module = JavaParserSymbolSolverBackend().parse(
+                "package smoke;\n"
+                "interface I<T> { T run(T value); }\n"
+                "class Smoke<T> implements I<T> {\n"
+                "    public T run(T value) { return helper(value); }\n"
+                "    private T helper(T value) { return value; }\n"
+                "}\n",
+                "<backend-smoke.java>",
+            )
+            smoke = next(
+                (
+                    entity
+                    for entity in module.entities
+                    if entity.kind.value == "class" and entity.name == "Smoke"
+                ),
+                None,
+            )
+            if smoke is None or "I" not in smoke.bases or smoke.type_parameters != ("T",):
+                return 1
+            print(JavaParserSymbolSolverBackend.descriptor.backend_id)
+            return 0
 
     if args.command == "deployment":
         deployment_service = DeploymentService()
