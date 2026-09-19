@@ -135,11 +135,32 @@ jobs:
         if: steps.csharp.outputs.present == 'true'
         shell: bash
         run: |
-          dotnet run \
-            --project "$RUNNER_TEMP/oop-design-checker/src/frontends/cui/OopDesignChecker.Cui.csproj" \
-            -- . \
-            --config oop-design-checker.json \
-            --fail-on danger \
-            --format github
+          mapfile -t projects < <(
+            find . -type f -name '*.csproj' \
+              -not -path './.git/*' \
+              -not -path './.dev/*' \
+              -not -path './build/*' \
+              -not -path './dist/*' \
+              -not -path './tests/*' \
+              | sort
+          )
+          if [ "${#projects[@]}" -gt 0 ]; then
+            for project in "${projects[@]}"; do
+              echo "Checking OOP design for $project"
+              dotnet run \
+                --project "$RUNNER_TEMP/oop-design-checker/src/frontends/cui/OopDesignChecker.Cui.csproj" \
+                -- "$project" \
+                --config "$GITHUB_WORKSPACE/oop-design-checker.json" \
+                --fail-on danger \
+                --format github
+            done
+          else
+            dotnet run \
+              --project "$RUNNER_TEMP/oop-design-checker/src/frontends/cui/OopDesignChecker.Cui.csproj" \
+              -- . \
+              --config "$GITHUB_WORKSPACE/oop-design-checker.json" \
+              --fail-on danger \
+              --format github
+          fi
 
 
