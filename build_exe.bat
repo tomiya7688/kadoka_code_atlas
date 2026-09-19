@@ -26,7 +26,7 @@ if "%JAVA_HOME%"=="" (
 )
 
 if exist "backends\java" rmdir /S /Q "backends\java"
-call mvn -q -f "backend-src\java\pom.xml" package
+call call mvn -q -f "backend-src\java\pom.xml" package
 if errorlevel 1 exit /b 1
 mkdir "backends\java"
 copy /Y "backend-src\java\target\kadoka-java-backend.jar" "backends\java\kadoka-java-backend.jar" >nul
