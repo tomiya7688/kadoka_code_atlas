@@ -31,7 +31,8 @@ if errorlevel 1 exit /b 1
 mkdir "backends\java"
 copy /Y "backend-src\java\target\kadoka-java-backend.jar" "backends\java\kadoka-java-backend.jar" >nul
 if errorlevel 1 exit /b 1
-"%JAVA_HOME%\bin\jlink.exe" --add-modules ALL-MODULE-PATH --output "backends\java\runtime"
+if exist "backends\java\runtime" rmdir /S /Q "backends\java\runtime"
+xcopy /E /I /Y "%JAVA_HOME%\*" "backends\java\runtime\" >nul
 if errorlevel 1 exit /b 1
 
 if exist "backends\csharp" rmdir /S /Q "backends\csharp"
