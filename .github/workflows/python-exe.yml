@@ -42,7 +42,7 @@ jobs:
 
       - name: Build onedir app
         shell: cmd
-        run: build_exe.bat
+        run: call build_exe.bat
 
       - name: Smoke test app
         shell: powershell
