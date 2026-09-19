@@ -15,6 +15,25 @@ if errorlevel 1 (
     exit /b 1
 )
 
+where mvn >nul 2>nul
+if errorlevel 1 (
+    echo Maven is required to build the bundled JavaParser backend.
+    exit /b 1
+)
+if "%JAVA_HOME%"=="" (
+    echo JAVA_HOME must point to the JDK used to build the private Java runtime.
+    exit /b 1
+)
+
+if exist "backends\java" rmdir /S /Q "backends\java"
+mvn -q -f "backend-src\java\pom.xml" package
+if errorlevel 1 exit /b 1
+mkdir "backends\java"
+copy /Y "backend-src\java\target\kadoka-java-backend.jar" "backends\java\kadoka-java-backend.jar" >nul
+if errorlevel 1 exit /b 1
+"%JAVA_HOME%\bin\jlink.exe" --add-modules ALL-MODULE-PATH --output "backends\java\runtime"
+if errorlevel 1 exit /b 1
+
 if exist "backends\csharp" rmdir /S /Q "backends\csharp"
 dotnet publish "backend-src\csharp\Kadoka.CSharp.Backend.csproj" -c Release -r win-x64 --self-contained true -p:PublishSingleFile=false -p:PublishTrimmed=false -o "backends\csharp"
 if errorlevel 1 exit /b 1
