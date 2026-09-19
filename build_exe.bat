@@ -56,6 +56,20 @@ if exist "backends" (
     if errorlevel 1 exit /b 1
 )
 
+if not exist "dist\kadoka-code-atlas\kadoka-code-atlas.exe" (
+    echo PyInstaller output missing: dist\kadoka-code-atlas\kadoka-code-atlas.exe
+    exit /b 1
+)
+if not exist "dist\kadoka-code-atlas\backends\java\kadoka-java-backend.jar" (
+    echo Bundled Java helper missing from onedir output.
+    exit /b 1
+)
+if not exist "dist\kadoka-code-atlas\backends\java\runtime\bin\java.exe" (
+    echo Bundled private Java runtime missing from onedir output.
+    exit /b 1
+)
+
 echo.
 echo App build completed: dist\kadoka-code-atlas\kadoka-code-atlas.exe
 endlocal
+exit /b 0
