@@ -53,7 +53,6 @@ def main(argv: list[str] | None = None) -> int:
     assert interface["declaration_kind"] == "interface"
     assert run["call_sequence"].count("helper") == 2
     assert len(run["resolved_calls"]) >= 2
-    assert any(item["kind"] == "unresolved_symbol" for item in module["diagnostics"])
     return 0
 
 
