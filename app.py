@@ -101,7 +101,7 @@ def main(argv: list[str] | None = None) -> int:
     sequence_diagram.add_argument("--hide-duplicate-calls", action="store_true")
     sequence_diagram.add_argument("--show-returns", action="store_true")
     backend_smoke = sub.add_parser("backend-smoke", help=argparse.SUPPRESS)
-    backend_smoke.add_argument("language", choices=("gdscript", "csharp"))
+    backend_smoke.add_argument("language", choices=("gdscript", "csharp", "java"))
     args = parser.parse_args(arguments)
 
     if args.version:
