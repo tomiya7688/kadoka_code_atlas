@@ -23,6 +23,10 @@ jobs:
         with:
           python-version: "3.11"
 
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
       - name: Install project and build tools
         run: py -3 -m pip install -e ".[test,exe]"
 
@@ -39,6 +43,7 @@ jobs:
           $exe = ".\dist\kadoka-code-atlas\kadoka-code-atlas.exe"
           $config = ".\dist\kadoka-code-atlas\config\kadoka-code-atlas.json"
           $backendManifest = ".\dist\kadoka-code-atlas\backends\manifest.json"
+          $csharpBackend = ".\dist\kadoka-code-atlas\backends\csharp\kadoka-csharp-backend.exe"
           if (-not (Test-Path $exe)) {
             Write-Error "EXE not found: $exe"
             exit 1
@@ -49,6 +54,10 @@ jobs:
           }
           if (-not (Test-Path $backendManifest)) {
             Write-Error "Backend manifest not found: $backendManifest"
+            exit 1
+          }
+          if (-not (Test-Path $csharpBackend)) {
+            Write-Error "C# backend not found: $csharpBackend"
             exit 1
           }
           $manifest = Get-Content $backendManifest -Raw | ConvertFrom-Json
@@ -70,6 +79,12 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           if ($backendOutput -notmatch "gdscript-tree-sitter") {
             Write-Error "GDScript backend smoke failed: $backendOutput"
+            exit 1
+          }
+          $csharpOutput = & $exe backend-smoke csharp
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          if ($csharpOutput -notmatch "csharp-roslyn-helper") {
+            Write-Error "C# backend smoke failed: $csharpOutput"
             exit 1
           }
 
